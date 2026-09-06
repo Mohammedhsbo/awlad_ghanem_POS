@@ -11,34 +11,52 @@ jobs:
     runs-on: macos-15-intel
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 11.9.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
 
       - name: Confirm Intel runner
         run: |
           echo "Architecture: $(uname -m)"
+          echo "Node: $(node --version)"
+          echo "pnpm: $(pnpm --version)"
           test "$(uname -m)" = "x86_64"
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Acquire PostgreSQL 16 Intel binaries
         run: bash scripts/setup-postgres-mac.sh
 
-      - run: pnpm typecheck
-      - run: pnpm exec prisma validate
-      - run: pnpm exec prisma generate
-      - run: pnpm --filter @motorcycle-system/api build
+      - name: Typecheck
+        run: pnpm typecheck
 
-      - run: pnpm --dir renderer package:mac:x64
+      - name: Prisma validate
+        run: pnpm exec prisma validate
+
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+
+      - name: Build API
+        run: pnpm --filter @motorcycle-system/api build
+
+      - name: Build macOS Intel Electron app
+        run: pnpm --dir renderer package:mac:x64
+
+      - name: Verify packaged app architecture
+        run: |
+          file "renderer/release/mac/Motorcycle System POS.app/Contents/MacOS/Motorcycle System POS"
 
       - name: Run packaged runtime smoke test
         env:
