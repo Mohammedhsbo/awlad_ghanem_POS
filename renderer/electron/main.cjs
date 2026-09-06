@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
-const { existsSync, readFileSync, statSync } = require('node:fs');
+const { existsSync, readFileSync, statSync, writeFileSync } = require('node:fs');
 const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { PostgresManager, POSTGRES_PORT } = require('./postgres-manager.cjs');
