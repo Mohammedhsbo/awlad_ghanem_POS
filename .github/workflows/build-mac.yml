@@ -8,31 +8,47 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-15-intel
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - name: Enable exact pnpm version
-        run: corepack enable && corepack prepare pnpm@11.9.0 --activate
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
       - name: Confirm Intel runner
-        run: test "$(uname -m)" = "x86_64"
+        run: |
+          echo "Architecture: $(uname -m)"
+          test "$(uname -m)" = "x86_64"
+
       - run: pnpm install --frozen-lockfile
+
       - name: Acquire PostgreSQL 16 Intel binaries
         run: bash scripts/setup-postgres-mac.sh
+
       - run: pnpm typecheck
       - run: pnpm exec prisma validate
       - run: pnpm exec prisma generate
       - run: pnpm --filter @motorcycle-system/api build
+
       - run: pnpm --dir renderer package:mac:x64
+
       - name: Run packaged runtime smoke test
         env:
           POS_SMOKE_STATUS_PATH: ${{ runner.temp }}/pos-smoke-status.json
           POS_ADMIN_EMAIL: admin@manage.com
           POS_ADMIN_PASSWORD: admin123
-        run: node scripts/ci/smoke-packaged-mac.mjs "renderer/release/mac/Motorcycle System POS.app/Contents/MacOS/Motorcycle System POS"
+        run: |
+          node scripts/ci/smoke-packaged-mac.mjs \
+            "renderer/release/mac/Motorcycle System POS.app/Contents/MacOS/Motorcycle System POS"
+
       - name: Upload macOS Intel DMG
         uses: actions/upload-artifact@v4
         with:
