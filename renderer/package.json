@@ -11,7 +11,7 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "oxlint",
     "preview": "vite preview",
-    "package:mac:x64": "pnpm build && electron-builder --mac dmg --x64 --publish never"
+    "package:mac:x64": "node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --mac dmg --x64 --publish never"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
@@ -47,7 +47,8 @@
       { "from": "../server/dist", "to": "server/dist" },
       { "from": "../server/node_modules", "to": "server/node_modules" },
       { "from": "../prisma", "to": "prisma" },
-      { "from": "../node_modules/prisma", "to": "prisma-cli" }
+      { "from": "../.build/prisma-cli", "to": "prisma-cli" },
+      { "from": "../node_modules/@prisma/engines", "to": "prisma-cli/node_modules/@prisma/engines" }
     ],
     "mac": {
       "target": [{ "target": "dmg", "arch": ["x64"] }],
