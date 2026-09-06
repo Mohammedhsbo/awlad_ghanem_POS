@@ -47,8 +47,7 @@
       { "from": "../server/dist", "to": "server/dist" },
       { "from": "../server/node_modules", "to": "server/node_modules" },
       { "from": "../prisma", "to": "prisma" },
-      { "from": "../.build/prisma-cli", "to": "prisma-cli" },
-      { "from": "../.build/prisma-cli/node_modules/@prisma/engines", "to": "prisma-cli/node_modules/@prisma/engines" }
+      { "from": "../.build/prisma-cli", "to": "prisma-cli", "filter": ["**/*"] }
     ],
     "mac": {
       "target": [{ "target": "dmg", "arch": ["x64"] }],
