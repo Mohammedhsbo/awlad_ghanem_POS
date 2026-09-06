@@ -4,7 +4,7 @@ set -euo pipefail
 version='16.15'
 archive_name='postgresql-16.15-1-osx-binaries.tar.gz'
 download_url='https://sbp.enterprisedb.com/getfile.jsp?fileid=1260512'
-expected_sha256='ADD486B77B5DB414A7B2A96CD964B1CEA879B9CA64EC9BCB2DFE2E5724541E02'
+expected_sha256='B2CD6A98DF1FE0BD84FC9C76109C168A9C018C36A2DCA93E542B417237E6EECE'
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cache_root="$repo_root/.cache/postgres"
 archive_path="$cache_root/$archive_name"
