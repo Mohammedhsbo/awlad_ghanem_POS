@@ -1,4 +1,4 @@
-name: Build macOS Intel
+ame: Build macOS Intel
 
 on:
   workflow_dispatch:
