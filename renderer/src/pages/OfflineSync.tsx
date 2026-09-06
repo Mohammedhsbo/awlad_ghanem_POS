@@ -1,0 +1,16 @@
+import { useOfflineSync } from '../hooks/useOfflineSync';
+import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
+
+export default function OfflineSync({ lang }: { lang: 'en' | 'ar' }) {
+  const isRtl = lang === 'ar';
+  const sync = useOfflineSync(lang);
+  const formatDate = (value?: string) => value ? new Date(value).toLocaleString(isRtl ? 'ar-EG' : 'en-EG') : (isRtl ? 'لا يوجد' : 'None');
+
+  return <section className="desktop-page" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="page-heading"><div><span className="eyebrow">{isRtl ? 'المزامنة' : 'Synchronization'}</span><h1>{isRtl ? 'حالة العمل دون اتصال' : 'Offline sync'}</h1><p>{isRtl ? 'حالة الاتصال والعمليات المؤجلة لهذا الموظف.' : 'Connection and queued operations for this employee.'}</p></div><button className="secondary-action" onClick={() => void sync.syncNow()} disabled={sync.isLoadingStatus}><RefreshCw size={16} /> {isRtl ? 'مزامنة الآن' : 'Sync now'}</button></div>
+    <div className="dashboard-grid"><div className="metric-card metric-blue"><div className="metric-icon">{sync.isOnline ? <Wifi size={20} /> : <WifiOff size={20} />}</div><span>{isRtl ? 'الاتصال' : 'Connection'}</span><strong>{sync.isOnline ? (isRtl ? 'متصل' : 'Online') : (isRtl ? 'غير متصل' : 'Offline')}</strong></div><div className="metric-card metric-orange"><span>{isRtl ? 'محلي معلق' : 'Local pending'}</span><strong>{sync.queueCount}</strong></div><div className="metric-card metric-green"><span>{isRtl ? 'الخادم معلق' : 'Server pending'}</span><strong>{sync.serverStatus?.queuedOperations ?? 0}</strong></div><div className="metric-card metric-purple"><span>{isRtl ? 'آخر مزامنة' : 'Last sync'}</span><strong>{formatDate(sync.serverStatus?.lastSyncAt)}</strong></div></div>
+    {sync.syncError && <div className="state-panel" role="alert">{isRtl ? 'تعذر تحديث حالة المزامنة.' : 'Could not refresh sync status.'}</div>}
+    <div className="surface-panel"><div className="panel-heading"><h2>{isRtl ? 'العمليات المحلية' : 'Local operations'}</h2></div>{sync.queue.length === 0 ? <div className="empty-state">{isRtl ? 'لا توجد عمليات محلية معلقة.' : 'No local operations are pending.'}</div> : <div className="notification-list">{sync.queue.map((operation) => <article className="notification-row" key={operation.id}><div className="notification-copy"><strong>{operation.type}</strong><small>{formatDate(new Date(operation.timestamp).toISOString())}</small><p>{JSON.stringify(operation.data)}</p></div><span className="status-pill">{isRtl ? 'معلق' : 'Pending'}</span></article>)}</div>}</div>
+    <div className="surface-panel"><div className="panel-heading"><h2>{isRtl ? 'حالة الخادم' : 'Server queue'}</h2></div>{sync.serverQueue.length === 0 ? <div className="empty-state">{isRtl ? 'لا توجد عمليات في الخادم.' : 'No operations reported by the server.'}</div> : <div className="notification-list">{sync.serverQueue.map((operation) => <article className="notification-row" key={operation.id}><div className="notification-copy"><strong>{operation.type}</strong><small>{formatDate(operation.createdAt)}</small><p>{JSON.stringify(operation.data)}</p></div><span className="status-pill">{operation.status}</span></article>)}</div>}</div>
+  </section>;
+}

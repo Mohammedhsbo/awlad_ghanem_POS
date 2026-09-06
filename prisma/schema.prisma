@@ -1,0 +1,1886 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "windows", "darwin"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Branch {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nameAr              String                @db.VarChar(200)
+  nameEn              String                @db.VarChar(200)
+  address             String?
+  phone               String?               @db.VarChar(20)
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  users               User[]
+  auditLogs           AuditLog[]
+  motorcycles         Motorcycle[]
+  purchases           Purchase[]
+  transfersOut        Transfer[]            @relation("TransferFromBranch")
+  transfersIn         Transfer[]            @relation("TransferToBranch")
+  orders              Order[]
+  desktopOrders       DesktopOrder[]
+  reservations        Reservation[]
+  desktopReservations DesktopReservation[]
+  invoices            Invoice[]
+  payments            Payment[]
+  financingContracts  FinancingContract[]
+  letters             Letter[]
+  notifications       Notification[]
+  configurations      BranchConfiguration[] @relation("BranchConfigurations")
+  configAudits        ConfigurationAudit[]  @relation("ConfigAuditBranch")
+  documentNumberings  DocumentNumbering[]   @relation("DocumentNumberingBranch")
+  workingHours        WorkingHours[]        @relation("BranchWorkingHours")
+  holidays            Holiday[]             @relation("BranchHolidays")
+  integrations        Integration[]         @relation("BranchIntegrations")
+  apiKeys             APIKey[]              @relation("BranchAPIKeys")
+  Inquiry             Inquiry[]
+  Sale                Sale[]
+  SaleRequest         SaleRequest[]
+  PosReservation      PosReservation[]
+  PosInstallmentPlan  PosInstallmentPlan[]
+  desktopAttendance   DesktopAttendance[]   @relation("DesktopAttendanceBranch")
+}
+
+model Role {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String           @unique @db.VarChar(100)
+  description String?
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+  users       User[]
+}
+
+model RolePermission {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId   String @db.Uuid
+  resource String @db.VarChar(50)
+  action   String @db.VarChar(20)
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, resource, action])
+  @@index([roleId])
+}
+
+model User {
+  id                         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                       String                   @db.VarChar(200)
+  email                      String                   @unique @db.VarChar(255)
+  passwordHash               String                   @db.VarChar(255)
+  phone                      String?                  @db.VarChar(20)
+  whatsappSenderNumber       String?                  @unique @db.VarChar(20)
+  branchId                   String?                  @db.Uuid
+  roleId                     String                   @db.Uuid
+  lang                       String                   @default("ar") @db.VarChar(2)
+  isActive                   Boolean                  @default(true)
+  lastLoginAt                DateTime?
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  branch                     Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  role                       Role                     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  auditLogs                  AuditLog[]
+  purchases                  Purchase[]
+  transfers                  Transfer[]
+  orders                     Order[]
+  desktopOrders              DesktopOrder[]
+  reservations               Reservation[]
+  desktopReservations        DesktopReservation[]
+  invoices                   Invoice[]
+  payments                   Payment[]
+  refunds                    Refund[]
+  createdFinancingContracts  FinancingContract[]      @relation("FinancingCreator")
+  approvedFinancingContracts FinancingContract[]      @relation("FinancingApprover")
+  createdLetters             Letter[]                 @relation("LetterCreator")
+  confirmedLetters           Letter[]                 @relation("LetterConfirmer")
+  createdLetterDocuments     LetterDocument[]         @relation("LetterDocumentCreator")
+  createdCustomerInquiries   CustomerInquiry[]        @relation("CustomerInquiryCreator")
+  letterHistoryActions       LetterHistory[]          @relation("LetterHistoryActor")
+  notifications              Notification[]
+  notificationPreferences    NotificationPreference[]
+  communicationLogs          CommunicationLog[]
+  companyConfigsCreated      CompanyConfiguration[]   @relation("CompanyConfigCreator")
+  branchConfigsCreated       BranchConfiguration[]    @relation("BranchConfigCreator")
+  featureFlagsCreated        FeatureFlag[]            @relation("FeatureFlagCreator")
+  configAuditsPerformed      ConfigurationAudit[]     @relation("ConfigAuditChanger")
+  holidaysCreated            Holiday[]                @relation("HolidayCreator")
+  integrationsCreated        Integration[]            @relation("IntegrationCreator")
+  integrationAuditsPerformed IntegrationAudit[]       @relation("IntegrationAuditChanger")
+  apiKeysCreated             APIKey[]                 @relation("APIKeyCreator")
+  webhookEndpointsCreated    WebhookEndpoint[]        @relation("WebhookCreator")
+  Inquiry                    Inquiry[]
+  Sale                       Sale[]
+  SaleRequest                SaleRequest[]
+  PosReservation             PosReservation[]
+  PosInstallmentPlan         PosInstallmentPlan[]
+  desktopPermissions         DesktopPermission[]      @relation("DesktopPermissions")
+  desktopAttendance          DesktopAttendance[]      @relation("DesktopAttendance")
+
+  @@index([branchId])
+  @@index([roleId])
+}
+
+enum MotorcycleStatus {
+  in_transit
+  available
+  reserved
+  sold
+  in_transfer
+  maintenance
+  returned
+}
+
+enum PurchaseStatus {
+  draft
+  ordered
+  partially_received
+  received
+  cancelled
+}
+
+enum TransferStatus {
+  initiated
+  in_transit
+  received
+  cancelled
+}
+
+enum OrderStatus {
+  draft
+  confirmed
+  processing
+  awaiting_delivery
+  completed
+  cancelled
+  refunded
+}
+
+enum DesktopOrderPaymentType {
+  CASH
+  INSTALLMENT
+}
+
+enum MotorcycleCondition {
+  NEW
+  IMPORTED
+}
+
+model Brand {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nameAr      String       @db.VarChar(200)
+  nameEn      String       @db.VarChar(200)
+  logo        String?      @db.VarChar(500)
+  isActive    Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  motorcycles Motorcycle[]
+
+  @@unique([nameAr])
+  @@unique([nameEn])
+}
+
+model Category {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nameAr      String       @db.VarChar(200)
+  nameEn      String       @db.VarChar(200)
+  parentId    String?      @db.Uuid
+  isActive    Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  parent      Category?    @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[]   @relation("CategoryHierarchy")
+  motorcycles Motorcycle[]
+
+  @@unique([nameAr, parentId])
+  @@unique([nameEn, parentId])
+  @@index([parentId])
+}
+
+model Motorcycle {
+  id                           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin                          String               @unique @db.VarChar(50)
+  engineNumber                 String?              @unique @db.VarChar(100)
+  model                        String               @db.VarChar(200)
+  year                         Int
+  color                        String?              @db.VarChar(50)
+  engineSize                   String?              @db.VarChar(20)
+  descriptionAr                String?              @db.Text
+  descriptionEn                String?              @db.Text
+  price                        Decimal              @db.Decimal(12, 2)
+  costPrice                    Decimal              @db.Decimal(12, 2)
+  condition                    MotorcycleCondition  @default(NEW)
+  reservationDepositAmount     Decimal?             @db.Decimal(12, 2)
+  reservationDepositPercentage Decimal?             @db.Decimal(5, 2)
+  status                       MotorcycleStatus     @default(available)
+  images                       Json?                @default("[]")
+  branchId                     String               @db.Uuid
+  brandId                      String               @db.Uuid
+  categoryId                   String               @db.Uuid
+  createdAt                    DateTime             @default(now())
+  updatedAt                    DateTime             @updatedAt
+  branch                       Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  brand                        Brand                @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category                     Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  purchaseItem                 PurchaseItem?
+  transferItems                TransferItem[]
+  orderItems                   OrderItem[]
+  reservations                 Reservation[]
+  invoiceItems                 InvoiceItem[]
+  letters                      Letter[]
+  installmentRequests          InstallmentRequest[]
+  Inquiry                      Inquiry[]
+  Sale                         Sale[]
+  SaleRequest                  SaleRequest[]
+  PosReservation               PosReservation[]
+  PosInstallmentPlan           PosInstallmentPlan[]
+  DesktopOrderItem             DesktopOrderItem[]
+  DesktopReservation           DesktopReservation[]
+
+  @@index([status])
+  @@index([branchId])
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([year])
+  @@index([price])
+}
+
+model AuditLog {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Exactly one of userId / customerId is set: staff act as User rows,
+  // e-commerce customers as Customer rows, and the two id spaces are disjoint.
+  userId     String?   @db.Uuid
+  customerId String?   @db.Uuid
+  action     String    @db.VarChar(50)
+  entityType String    @db.VarChar(50)
+  entityId   String    @db.Uuid
+  branchId   String?   @db.Uuid
+  before     Json?
+  after      Json?
+  createdAt  DateTime  @default(now())
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([branchId])
+}
+
+model Supplier {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String     @unique @db.VarChar(200)
+  contactPerson String?    @db.VarChar(200)
+  phone         String?    @db.VarChar(20)
+  email         String?
+  address       String?
+  notes         String?
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  purchases     Purchase[]
+}
+
+model Purchase {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseNumber String         @unique @db.VarChar(50)
+  supplierId     String         @db.Uuid
+  branchId       String         @db.Uuid
+  userId         String         @db.Uuid
+  totalAmount    Decimal        @db.Decimal(12, 2)
+  status         PurchaseStatus @default(draft)
+  receivedAt     DateTime?
+  notes          String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  supplier Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  branch   Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items    PurchaseItem[]
+
+  @@index([supplierId])
+  @@index([branchId])
+  @@index([userId])
+  @@index([status])
+}
+
+model PurchaseItem {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId   String   @db.Uuid
+  motorcycleId String?  @unique @db.Uuid // Nullable until received. One-to-one mapping
+  model        String   @db.VarChar(200)
+  vin          String?  @db.VarChar(50)
+  quantity     Int      @default(1)
+  unitCost     Decimal  @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+
+  purchase   Purchase    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  motorcycle Motorcycle? @relation(fields: [motorcycleId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseId])
+}
+
+model Transfer {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transferNumber String         @unique @db.VarChar(50)
+  fromBranchId   String         @db.Uuid
+  toBranchId     String         @db.Uuid
+  userId         String         @db.Uuid
+  status         TransferStatus @default(initiated)
+  notes          String?        @db.Text
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  fromBranch Branch         @relation("TransferFromBranch", fields: [fromBranchId], references: [id], onDelete: Restrict)
+  toBranch   Branch         @relation("TransferToBranch", fields: [toBranchId], references: [id], onDelete: Restrict)
+  user       User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items      TransferItem[]
+
+  @@index([fromBranchId])
+  @@index([toBranchId])
+  @@index([userId])
+  @@index([status])
+}
+
+model TransferItem {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transferId   String @db.Uuid
+  motorcycleId String @db.Uuid
+
+  transfer   Transfer   @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  motorcycle Motorcycle @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+
+  @@index([transferId])
+  @@index([motorcycleId])
+}
+
+model Customer {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String               @db.VarChar(200)
+  phone               String               @unique @db.VarChar(20)
+  email               String?              @unique @db.VarChar(255)
+  passwordHash        String?              @db.VarChar(255)
+  nationalId          String?              @unique @db.VarChar(20)
+  address             String?              @db.Text
+  notes               String?              @db.Text
+  googleId            String?              @unique @db.VarChar(255)
+  authProvider        String               @default("local") @db.VarChar(20)
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  addresses           Address[]
+  orders              Order[]
+  reservations        Reservation[]
+  desktopOrders       DesktopOrder[]
+  desktopReservations DesktopReservation[]
+  invoices            Invoice[]
+  payments            Payment[]
+  financingContracts  FinancingContract[]
+  installmentRequests InstallmentRequest[]
+  letters             Letter[]
+  communicationLogs   CommunicationLog[]
+  auditLogs           AuditLog[]
+  inquiries           CustomerInquiry[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([nationalId])
+  @@index([googleId])
+  @@index([name, phone])
+}
+
+model Address {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId  String   @db.Uuid
+  label       String   @default("Home") @db.VarChar(100)
+  addressLine String   @db.Text
+  city        String?  @db.VarChar(100)
+  region      String?  @db.VarChar(100)
+  postalCode  String?  @db.VarChar(20)
+  country     String   @default("Saudi Arabia") @db.VarChar(100)
+  isDefault   Boolean  @default(false)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([customerId, isDefault])
+}
+
+model CustomerInquiry {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId        String   @db.Uuid
+  address           String   @db.Text
+  phone             String   @db.VarChar(20)
+  occupation        String   @db.VarChar(200)
+  occupationAddress String   @db.Text
+  idCardFrontImage  String   @db.VarChar(500)
+  idCardBackImage   String   @db.VarChar(500)
+  createdBy         String   @db.Uuid
+  createdAt         DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  creator  User     @relation("CustomerInquiryCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([customerId])
+  @@index([createdBy])
+  @@index([createdAt])
+}
+
+model Order {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber String      @unique @db.VarChar(30)
+  customerId  String      @db.Uuid
+  branchId    String      @db.Uuid
+  userId      String?     @db.Uuid
+  status      OrderStatus @default(draft)
+  totalAmount Decimal     @db.Decimal(12, 2)
+  discount    Decimal     @default(0) @db.Decimal(12, 2)
+  netAmount   Decimal     @db.Decimal(12, 2)
+  address     String?     @db.Text
+  notes       String?     @db.Text
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  customer           Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  branch             Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user               User?               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items              OrderItem[]
+  reservation        Reservation?
+  invoice            Invoice?
+  financingContracts FinancingContract[]
+  letters            Letter[]
+
+  @@index([orderNumber])
+  @@index([customerId])
+  @@index([branchId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId      String     @db.Uuid
+  motorcycleId String     @db.Uuid
+  unitPrice    Decimal    @db.Decimal(12, 2)
+  discount     Decimal    @default(0) @db.Decimal(12, 2)
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  motorcycle   Motorcycle @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, motorcycleId])
+  @@index([orderId])
+  @@index([motorcycleId])
+}
+
+model DesktopOrder {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber    String                  @unique @db.VarChar(30)
+  customerId     String                  @db.Uuid
+  branchId       String                  @db.Uuid
+  userId         String                  @db.Uuid
+  status         OrderStatus             @default(confirmed)
+  paymentType    DesktopOrderPaymentType
+  totalAmount    Decimal                 @db.Decimal(12, 2)
+  discount       Decimal                 @default(0) @db.Decimal(12, 2)
+  netAmount      Decimal                 @db.Decimal(12, 2)
+  customerIdImage String?                @db.VarChar(500)
+  address        String?                 @db.Text
+  notes          String?                 @db.Text
+  idempotencyKey String                  @unique @db.VarChar(200)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  branch      Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items       DesktopOrderItem[]
+  reservation DesktopReservation?
+
+  @@index([customerId])
+  @@index([branchId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DesktopOrderItem {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId      String       @db.Uuid
+  motorcycleId String       @db.Uuid
+  unitPrice    Decimal      @db.Decimal(12, 2)
+  discount     Decimal      @default(0) @db.Decimal(12, 2)
+  order        DesktopOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  motorcycle   Motorcycle   @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, motorcycleId])
+  @@index([orderId])
+  @@index([motorcycleId])
+}
+
+enum ReservationStatus {
+  active
+  converted
+  expired
+  cancelled
+}
+
+enum InvoiceStatus {
+  draft
+  issued
+  partially_paid
+  paid
+  overpaid
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  cancelled
+  refunded
+  partially_refunded
+}
+
+enum PaymentMethod {
+  cash
+  card
+  bank_transfer
+  cheque
+}
+
+enum FinancingContractStatus {
+  active
+  completed
+  defaulted
+  cancelled
+}
+
+enum InstallmentStatus {
+  upcoming
+  due
+  paid
+  overdue
+}
+
+enum InstallmentFrequency {
+  monthly
+  quarterly
+}
+
+enum InstallmentRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+model FinancingCompany {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String               @db.VarChar(200)
+  whatsappNumber      String               @db.VarChar(20)
+  isActive            Boolean              @default(true)
+  sortOrder           Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  installmentRequests InstallmentRequest[]
+  inquiries           Inquiry[]
+  SaleRequest         SaleRequest[]
+
+  @@index([isActive, sortOrder])
+}
+
+model InstallmentDuration {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  months              Int
+  isActive            Boolean              @default(true)
+  sortOrder           Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  installmentRequests InstallmentRequest[]
+  inquiries           Inquiry[]
+
+  @@unique([months])
+  @@index([isActive, sortOrder])
+}
+
+model Settings {
+  id                       String   @id @default("default") @db.VarChar(50)
+  instagramUrl             String?  @db.VarChar(500)
+  contactPhone             String?  @db.VarChar(20)
+  defaultDepositAmount     Decimal? @db.Decimal(12, 2)
+  defaultDepositPercentage Decimal? @db.Decimal(5, 2)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model InstallmentRequest {
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inquiryId                String?                  @unique @db.Uuid
+  customerId               String                   @db.Uuid
+  motorcycleId             String                   @db.Uuid
+  financingCompanyId       String                   @db.Uuid
+  installmentDurationId    String                   @db.Uuid
+  status                   InstallmentRequestStatus @default(pending)
+  buyerName                String                   @db.VarChar(200)
+  buyerPhone               String                   @db.VarChar(20)
+  buyerEmail               String?                  @db.VarChar(255)
+  buyerAddress             String?                  @db.Text
+  buyerOccupation          String?                  @db.VarChar(200)
+  buyerNationalIdImage     String                   @db.VarChar(500)
+  buyerNationalIdBackImage String?                  @db.VarChar(500)
+  salarySlipImage          String?                  @db.VarChar(500)
+  apartmentContractImage   String?                  @db.VarChar(500)
+  guarantorName            String?                  @db.VarChar(200)
+  guarantorPhone           String?                  @db.VarChar(20)
+  guarantorAddress         String?                  @db.Text
+  guarantorNationalIdImage String?                  @db.VarChar(500)
+  guarantorNationalIdBackImage String?              @db.VarChar(500)
+  guarantorSignatureImage  String?                  @db.VarChar(500)
+  motorcyclePrice          Decimal                  @db.Decimal(12, 2)
+  downPayment              Decimal                  @db.Decimal(12, 2)
+  monthlyInstallment       Decimal                  @db.Decimal(12, 2)
+  rejectionReason          String?                  @db.Text
+  reviewedAt               DateTime?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+
+  customer         Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  motorcycle       Motorcycle          @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+  financingCompany FinancingCompany    @relation(fields: [financingCompanyId], references: [id], onDelete: Restrict)
+  duration         InstallmentDuration @relation(fields: [installmentDurationId], references: [id], onDelete: Restrict)
+  inquiry          Inquiry?            @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([motorcycleId])
+  @@index([financingCompanyId])
+  @@index([installmentDurationId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Reservation {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reservationNumber String            @unique @db.VarChar(30)
+  customerId        String            @db.Uuid
+  motorcycleId      String            @db.Uuid
+  branchId          String            @db.Uuid
+  userId            String?           @db.Uuid
+  status            ReservationStatus @default(active)
+  totalPrice        Decimal           @db.Decimal(12, 2)
+  paidAmount        Decimal           @default(0) @db.Decimal(12, 2)
+  remainingAmount   Decimal           @db.Decimal(12, 2)
+  penaltyAmount     Decimal           @default(0) @db.Decimal(12, 2)
+  address           String?           @db.Text
+  expiresAt         DateTime?
+  notes             String?           @db.Text
+  convertedOrderId  String?           @unique @db.Uuid
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  customer       Customer   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  motorcycle     Motorcycle @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+  branch         Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user           User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  convertedOrder Order?     @relation(fields: [convertedOrderId], references: [id], onDelete: SetNull)
+  invoice        Invoice?
+  letters        Letter[]
+
+  @@index([reservationNumber])
+  @@index([customerId])
+  @@index([motorcycleId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([branchId])
+  @@index([status, expiresAt])
+}
+
+model DesktopReservation {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reservationNumber String            @unique @db.VarChar(30)
+  customerId        String            @db.Uuid
+  motorcycleId      String            @db.Uuid
+  branchId          String            @db.Uuid
+  userId            String            @db.Uuid
+  status            ReservationStatus @default(active)
+  totalPrice        Decimal           @db.Decimal(12, 2)
+  paidAmount        Decimal           @default(0) @db.Decimal(12, 2)
+  remainingAmount   Decimal           @db.Decimal(12, 2)
+  customerIdImage   String?           @db.VarChar(500)
+  address           String?           @db.Text
+  expiresAt         DateTime?
+  notes             String?           @db.Text
+  convertedOrderId  String?           @unique @db.Uuid
+  idempotencyKey    String            @unique @db.VarChar(200)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  motorcycle     Motorcycle    @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+  branch         Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  convertedOrder DesktopOrder? @relation(fields: [convertedOrderId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([motorcycleId])
+  @@index([branchId])
+  @@index([userId])
+  @@index([status, expiresAt])
+}
+
+model Invoice {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceNumber   String        @unique @db.VarChar(50)
+  customerId      String        @db.Uuid
+  orderId         String?       @unique @db.Uuid
+  reservationId   String?       @unique @db.Uuid
+  branchId        String        @db.Uuid
+  userId          String        @db.Uuid
+  status          InvoiceStatus @default(draft)
+  totalAmount     Decimal       @db.Decimal(12, 2)
+  paidAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  remainingAmount Decimal       @default(0) @db.Decimal(12, 2)
+  address         String?       @db.Text
+  issueDate       DateTime?
+  dueDate         DateTime?
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  customer           Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order              Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reservation        Reservation?        @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  branch             Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items              InvoiceItem[]
+  payments           Payment[]
+  paymentAllocations PaymentAllocation[]
+
+  @@index([invoiceNumber])
+  @@index([customerId])
+  @@index([orderId])
+  @@index([reservationId])
+  @@index([branchId])
+  @@index([status])
+  @@index([issueDate])
+  @@index([createdAt])
+  @@index([status, branchId])
+}
+
+model InvoiceItem {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId    String   @db.Uuid
+  motorcycleId String   @db.Uuid
+  description  String   @db.Text
+  quantity     Int      @default(1)
+  unitPrice    Decimal  @db.Decimal(12, 2)
+  discount     Decimal  @default(0) @db.Decimal(12, 2)
+  totalPrice   Decimal  @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+
+  invoice    Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  motorcycle Motorcycle @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([motorcycleId])
+}
+
+model Payment {
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentReference      String        @unique @db.VarChar(50)
+  invoiceId             String?       @db.Uuid
+  customerId            String        @db.Uuid
+  branchId              String        @db.Uuid
+  userId                String        @db.Uuid
+  amount                Decimal       @db.Decimal(12, 2)
+  method                PaymentMethod
+  status                PaymentStatus @default(pending)
+  reference             String?       @db.VarChar(200)
+  externalTransactionId String?       @db.VarChar(200)
+  providerId            String?       @db.VarChar(100)
+  idempotencyKey        String        @unique @db.VarChar(200)
+  cashAmountReceived    Decimal?      @db.Decimal(12, 2)
+  cashChange            Decimal?      @db.Decimal(12, 2)
+  confirmedAt           DateTime?
+  failedAt              DateTime?
+  failureReason         String?       @db.Text
+  notes                 String?       @db.Text
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  invoice     Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  branch      Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  allocations PaymentAllocation[]
+  refunds     Refund[]
+
+  @@index([paymentReference])
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([branchId])
+  @@index([status])
+  @@index([method])
+  @@index([idempotencyKey])
+  @@index([externalTransactionId])
+  @@index([createdAt])
+  @@index([status, branchId])
+}
+
+model PaymentAllocation {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId     String   @db.Uuid
+  invoiceId     String?  @db.Uuid
+  installmentId String?  @db.Uuid
+  amount        Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now())
+
+  payment     Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice     Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  installment Installment? @relation(fields: [installmentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@index([installmentId])
+}
+
+model Refund {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  refundReference String        @unique @db.VarChar(50)
+  paymentId       String        @db.Uuid
+  amount          Decimal       @db.Decimal(12, 2)
+  reason          String        @db.Text
+  method          PaymentMethod
+  status          String        @default("pending") @db.VarChar(20)
+  processedBy     String        @db.Uuid
+  processedAt     DateTime?
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  payment         Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  processedByUser User    @relation(fields: [processedBy], references: [id], onDelete: Restrict)
+
+  @@index([refundReference])
+  @@index([paymentId])
+  @@index([processedBy])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model WebhookEvent {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  providerId            String   @db.VarChar(50)
+  eventId               String   @db.VarChar(200)
+  eventType             String   @db.VarChar(100)
+  providerTransactionId String   @db.VarChar(200)
+  paymentId             String?  @db.Uuid
+  status                String   @db.VarChar(50)
+  result                String   @db.VarChar(50)
+  rawPayload            Json
+  createdAt             DateTime @default(now())
+
+  @@unique([providerId, eventId])
+  @@index([providerId])
+  @@index([eventId])
+  @@index([providerTransactionId])
+  @@index([paymentId])
+  @@index([createdAt])
+}
+
+model FinancingContract {
+  id                   String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contractNumber       String                  @unique @db.VarChar(50)
+  customerId           String                  @db.Uuid
+  orderId              String                  @db.Uuid
+  branchId             String                  @db.Uuid
+  createdBy            String                  @db.Uuid
+  approvedBy           String?                 @db.Uuid
+  totalAmount          Decimal                 @db.Decimal(12, 2)
+  downPayment          Decimal                 @default(0) @db.Decimal(12, 2)
+  financingAmount      Decimal                 @db.Decimal(12, 2)
+  numberOfInstallments Int
+  installmentFrequency InstallmentFrequency    @default(monthly)
+  interestRate         Decimal                 @default(0) @db.Decimal(5, 2)
+  startDate            DateTime                @db.Date
+  status               FinancingContractStatus @default(active)
+  approvedAt           DateTime?
+  completedAt          DateTime?
+  notes                String?                 @db.Text
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  branch       Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  creator      User          @relation("FinancingCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  approver     User?         @relation("FinancingApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+  installments Installment[]
+
+  @@index([contractNumber])
+  @@index([customerId])
+  @@index([orderId])
+  @@index([branchId])
+  @@index([status])
+  @@index([createdBy])
+  @@index([approvedBy])
+  @@index([startDate])
+  @@index([status, branchId])
+}
+
+model Installment {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contractId        String            @db.Uuid
+  installmentNumber Int
+  dueDate           DateTime          @db.Date
+  amount            Decimal           @db.Decimal(12, 2)
+  paidAmount        Decimal           @default(0) @db.Decimal(12, 2)
+  status            InstallmentStatus @default(upcoming)
+  paidAt            DateTime?
+  notes             String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  contract           FinancingContract   @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  paymentAllocations PaymentAllocation[]
+
+  @@unique([contractId, installmentNumber])
+  @@index([contractId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([status, dueDate])
+}
+
+enum LetterStatus {
+  issued
+  received
+  not_received
+}
+
+enum LetterType {
+  receipt
+  delivery
+}
+
+// SPEC-012 Notification Enums
+enum NotificationChannel {
+  in_app
+  email
+  sms
+  whatsapp
+  push
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  delivered
+  failed
+  read
+}
+
+enum NotificationPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum NotificationType {
+  order_confirmed
+  order_completed
+  payment_received
+  payment_reminder
+  installment_due
+  installment_overdue
+  reservation_expiring
+  reservation_expired
+  letter_issued
+  letter_received
+  transfer_initiated
+  transfer_received
+  system_alert
+  custom
+}
+
+model Letter {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  letterNumber         String       @unique @db.VarChar(30)
+  customerId           String       @db.Uuid
+  motorcycleId         String       @db.Uuid
+  orderId              String?      @db.Uuid
+  reservationId        String?      @db.Uuid
+  branchId             String       @db.Uuid
+  type                 LetterType   @default(receipt)
+  status               LetterStatus @default(issued)
+  issuedAt             DateTime     @default(now())
+  confirmedAt          DateTime?
+  expectedDeliveryDate DateTime?    @db.Date
+  documentStorageRef   String?      @db.VarChar(255)
+  userId               String       @db.Uuid
+  confirmedBy          String?      @db.Uuid
+  notes                String?      @db.Text
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  motorcycle  Motorcycle       @relation(fields: [motorcycleId], references: [id], onDelete: Restrict)
+  order       Order?           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reservation Reservation?     @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  branch      Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  creator     User             @relation("LetterCreator", fields: [userId], references: [id], onDelete: Restrict)
+  confirmer   User?            @relation("LetterConfirmer", fields: [confirmedBy], references: [id], onDelete: Restrict)
+  documents   LetterDocument[]
+  history     LetterHistory[]
+
+  @@index([letterNumber])
+  @@index([customerId])
+  @@index([motorcycleId])
+  @@index([orderId])
+  @@index([reservationId])
+  @@index([branchId])
+  @@index([status])
+  @@index([type])
+  @@index([issuedAt])
+  @@index([userId])
+  @@index([confirmedBy])
+  @@index([status, branchId])
+  @@index([status, issuedAt])
+}
+
+model LetterDocument {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  letterId     String   @db.Uuid
+  documentType String   @db.VarChar(50)
+  fileName     String   @db.VarChar(255)
+  fileSize     Int
+  mimeType     String   @db.VarChar(100)
+  storageRef   String   @db.VarChar(500)
+  version      Int      @default(1)
+  createdBy    String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  letter  Letter @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  creator User   @relation("LetterDocumentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([letterId])
+  @@index([documentType])
+  @@index([createdAt])
+  @@index([letterId, version])
+}
+
+model LetterHistory {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  letterId   String   @db.Uuid
+  action     String   @db.VarChar(50)
+  fromStatus String?  @db.VarChar(20)
+  toStatus   String?  @db.VarChar(20)
+  actorId    String   @db.Uuid
+  reason     String?  @db.VarChar(500)
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  letter Letter @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  actor  User   @relation("LetterHistoryActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([letterId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([letterId, createdAt])
+}
+
+// SPEC-012: Notifications & Communication
+
+model Notification {
+  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String               @db.Uuid
+  branchId     String?              @db.Uuid
+  type         NotificationType
+  channel      NotificationChannel
+  priority     NotificationPriority @default(normal)
+  title        String               @db.VarChar(200)
+  titleAr      String?              @db.VarChar(200)
+  message      String               @db.Text
+  messageAr    String?              @db.Text
+  data         Json?
+  status       NotificationStatus   @default(pending)
+  readAt       DateTime?
+  sentAt       DateTime?
+  scheduledFor DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch     Branch?                @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, status])
+  @@index([userId, readAt])
+  @@index([branchId])
+  @@index([type])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([createdAt])
+}
+
+model NotificationTemplate {
+  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code      String              @unique @db.VarChar(100)
+  type      NotificationType
+  channel   NotificationChannel
+  titleEn   String              @db.VarChar(200)
+  titleAr   String              @db.VarChar(200)
+  bodyEn    String              @db.Text
+  bodyAr    String              @db.Text
+  variables Json?               @default("[]")
+  isActive  Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([code])
+  @@index([type])
+  @@index([channel])
+}
+
+model NotificationPreference {
+  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String              @db.Uuid
+  type      NotificationType
+  channel   NotificationChannel
+  isEnabled Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
+  @@index([userId])
+}
+
+model NotificationDelivery {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  notificationId String              @db.Uuid
+  channel        NotificationChannel
+  recipient      String              @db.VarChar(255)
+  status         NotificationStatus  @default(pending)
+  attempts       Int                 @default(0)
+  maxAttempts    Int                 @default(3)
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+  errorMessage   String?             @db.Text
+  externalId     String?             @db.VarChar(255)
+  metadata       Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([status])
+  @@index([channel])
+  @@index([sentAt])
+}
+
+model CommunicationLog {
+  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?             @db.Uuid
+  customerId String?             @db.Uuid
+  channel    NotificationChannel
+  direction  String              @db.VarChar(20) // inbound, outbound
+  subject    String?             @db.VarChar(200)
+  content    String              @db.Text
+  metadata   Json?
+  sentAt     DateTime            @default(now())
+  createdAt  DateTime            @default(now())
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([channel])
+  @@index([sentAt])
+}
+
+model Outbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateId   String    @db.Uuid
+  aggregateType String    @db.VarChar(100)
+  eventType     String    @db.VarChar(100)
+  payload       Json
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([processedAt])
+  @@index([eventType])
+  @@index([aggregateType, aggregateId])
+  @@index([createdAt])
+}
+
+// SPEC-013: System Administration & Configuration
+
+enum ConfigDataType {
+  string
+  number
+  boolean
+  json
+  date
+}
+
+enum ConfigScope {
+  system
+  company
+  branch
+  user
+}
+
+enum FeatureFlagScope {
+  system
+  branch
+  user
+}
+
+enum NumberingResetPolicy {
+  never
+  yearly
+  monthly
+}
+
+enum HolidayScope {
+  system
+  branch
+}
+
+model SystemConfiguration {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configKey       String         @unique @db.VarChar(100)
+  configValue     String         @db.Text
+  dataType        ConfigDataType
+  category        String         @db.VarChar(50)
+  description     String?        @db.Text
+  isRequired      Boolean        @default(false)
+  defaultValue    String?        @db.Text
+  validationRules Json?
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@index([configKey, isActive])
+}
+
+model CompanyConfiguration {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configKey        String         @db.VarChar(100)
+  configValue      String         @db.Text
+  dataType         ConfigDataType
+  effectiveFrom    DateTime?      @db.Date
+  effectiveTo      DateTime?      @db.Date
+  version          Int            @default(1)
+  replacesConfigId String?        @db.Uuid
+  isActive         Boolean        @default(true)
+  createdBy        String         @db.Uuid
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  creator User @relation("CompanyConfigCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([configKey])
+  @@index([isActive])
+  @@index([effectiveFrom, effectiveTo])
+  @@index([configKey, isActive])
+}
+
+model BranchConfiguration {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId            String         @db.Uuid
+  configKey           String         @db.VarChar(100)
+  configValue         String         @db.Text
+  dataType            ConfigDataType
+  inheritsFromCompany Boolean        @default(true)
+  isActive            Boolean        @default(true)
+  createdBy           String         @db.Uuid
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  branch  Branch @relation("BranchConfigurations", fields: [branchId], references: [id], onDelete: Cascade)
+  creator User   @relation("BranchConfigCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@unique([branchId, configKey])
+  @@index([branchId])
+  @@index([configKey])
+  @@index([isActive])
+  @@index([branchId, configKey, isActive])
+}
+
+model FeatureFlag {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  flagKey           String           @unique @db.VarChar(100)
+  flagName          String           @db.VarChar(200)
+  description       String?          @db.Text
+  isEnabled         Boolean          @default(false)
+  scope             FeatureFlagScope
+  targetBranches    Json?
+  rolloutPercentage Int              @default(0)
+  environment       String           @default("production") @db.VarChar(20)
+  createdBy         String           @db.Uuid
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  creator User @relation("FeatureFlagCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([flagKey])
+  @@index([isEnabled])
+  @@index([scope])
+  @@index([environment])
+}
+
+model ConfigurationAudit {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configType      String   @db.VarChar(50)
+  configKey       String   @db.VarChar(100)
+  branchId        String?  @db.Uuid
+  previousValue   String?  @db.Text
+  newValue        String   @db.Text
+  changeReason    String?  @db.Text
+  changedBy       String   @db.Uuid
+  changeTimestamp DateTime @default(now())
+  ipAddress       String?  @db.VarChar(45)
+  userAgent       String?  @db.Text
+
+  changer User    @relation("ConfigAuditChanger", fields: [changedBy], references: [id], onDelete: Restrict)
+  branch  Branch? @relation("ConfigAuditBranch", fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([configType])
+  @@index([configKey])
+  @@index([branchId])
+  @@index([changedBy])
+  @@index([changeTimestamp])
+  @@index([configKey, changeTimestamp])
+}
+
+model DocumentNumbering {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentType      String               @db.VarChar(50)
+  branchId          String?              @db.Uuid
+  prefix            String?              @db.VarChar(10)
+  includeBranchCode Boolean              @default(true)
+  includeYear       Boolean              @default(true)
+  sequenceLength    Int                  @default(4)
+  currentSequence   Int                  @default(0)
+  resetPolicy       NumberingResetPolicy @default(yearly)
+  lastResetDate     DateTime?            @db.Date
+  isActive          Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  branch Branch? @relation("DocumentNumberingBranch", fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([documentType, branchId])
+  @@index([documentType])
+  @@index([branchId])
+  @@index([isActive])
+  @@index([documentType, branchId, isActive])
+}
+
+model WorkingHours {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId      String    @db.Uuid
+  dayOfWeek     Int
+  openTime      DateTime?
+  closeTime     DateTime?
+  isClosed      Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+
+  branch Branch @relation("BranchWorkingHours", fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, dayOfWeek, effectiveFrom])
+  @@index([branchId])
+  @@index([dayOfWeek])
+  @@index([isActive])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model Holiday {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  holidayName       String       @db.VarChar(200)
+  holidayDate       DateTime     @db.Date
+  scope             HolidayScope
+  branchId          String?      @db.Uuid
+  isRecurring       Boolean      @default(false)
+  recurrencePattern String?      @db.VarChar(50)
+  isActive          Boolean      @default(true)
+  createdBy         String       @db.Uuid
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  creator User    @relation("HolidayCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  branch  Branch? @relation("BranchHolidays", fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([holidayDate])
+  @@index([scope])
+  @@index([branchId])
+  @@index([isActive])
+  @@index([scope, branchId, holidayDate])
+}
+
+// SPEC-014: Integration & API Management
+
+model ExternalProvider {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  providerKey      String           @unique @db.VarChar(100)
+  providerName     String           @db.VarChar(200)
+  category         ProviderCategory
+  isEnabled        Boolean          @default(true)
+  supportsWebhooks Boolean          @default(false)
+  healthEndpoint   String?          @db.Text
+  documentationUrl String?          @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  integrations Integration[]
+
+  @@index([providerKey])
+  @@index([category])
+  @@index([isEnabled])
+}
+
+model Integration {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  providerId          String       @db.Uuid
+  integrationName     String       @db.VarChar(200)
+  branchId            String?      @db.Uuid
+  isEnabled           Boolean      @default(false)
+  configuration       Json
+  encryptedSecrets    String?      @db.Text
+  environment         String       @default("production") @db.VarChar(20)
+  healthStatus        HealthStatus @default(unknown)
+  lastHealthCheck     DateTime?
+  lastError           String?      @db.Text
+  consecutiveFailures Int          @default(0)
+  createdBy           String       @db.Uuid
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  provider         ExternalProvider   @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  creator          User               @relation("IntegrationCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  branch           Branch?            @relation("BranchIntegrations", fields: [branchId], references: [id], onDelete: Cascade)
+  webhookEndpoints WebhookEndpoint[]
+  logs             IntegrationLog[]
+  audits           IntegrationAudit[]
+
+  @@index([providerId])
+  @@index([branchId])
+  @@index([isEnabled])
+  @@index([healthStatus])
+  @@index([environment])
+}
+
+model APIKey {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  keyPrefix   String    @unique @db.VarChar(20)
+  keyHash     String    @unique @db.VarChar(128)
+  description String?   @db.VarChar(500)
+  scope       Json
+  branchId    String?   @db.Uuid
+  environment String    @default("production") @db.VarChar(20)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  usageCount  Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdBy   String    @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  creator User    @relation("APIKeyCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  branch  Branch? @relation("BranchAPIKeys", fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([keyPrefix])
+  @@index([keyHash])
+  @@index([branchId])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model WebhookEndpoint {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  integrationId String   @db.Uuid
+  url           String   @db.Text
+  events        Json
+  secret        String   @db.VarChar(128)
+  isEnabled     Boolean  @default(true)
+  createdBy     String   @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  integration Integration               @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  creator     User                      @relation("WebhookCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  events_log  IntegrationWebhookEvent[]
+
+  @@index([integrationId])
+  @@index([isEnabled])
+}
+
+model IntegrationWebhookEvent {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  endpointId     String             @db.Uuid
+  eventId        String             @unique @db.VarChar(200)
+  eventType      String             @db.VarChar(100)
+  payload        Json
+  signature      String?            @db.Text
+  receivedAt     DateTime           @default(now())
+  processedAt    DateTime?
+  attempts       Int                @default(0)
+  lastAttemptAt  DateTime?
+  status         WebhookEventStatus @default(pending)
+  error          String?            @db.Text
+  responseStatus Int?
+  responseBody   String?            @db.Text
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([endpointId])
+  @@index([eventId])
+  @@index([eventType])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([processedAt])
+}
+
+model IntegrationLog {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  integrationId     String   @db.Uuid
+  correlationId     String   @db.VarChar(100)
+  operation         String   @db.VarChar(100)
+  direction         String   @db.VarChar(20)
+  requestUrl        String?  @db.Text
+  requestMethod     String?  @db.VarChar(20)
+  requestHeaders    Json?
+  requestBody       String?  @db.Text
+  responseStatus    Int?
+  responseHeaders   Json?
+  responseBody      String?  @db.Text
+  duration          Int?
+  errorCode         String?  @db.VarChar(100)
+  errorMessage      String?  @db.Text
+  retryAttempt      Int      @default(0)
+  providerRequestId String?  @db.VarChar(200)
+  createdAt         DateTime @default(now())
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([correlationId])
+  @@index([operation])
+  @@index([createdAt])
+  @@index([responseStatus])
+}
+
+model IntegrationAudit {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  integrationId String   @db.Uuid
+  action        String   @db.VarChar(100)
+  previousValue Json?
+  newValue      Json?
+  changedBy     String   @db.Uuid
+  changeReason  String?  @db.Text
+  ipAddress     String?  @db.VarChar(45)
+  userAgent     String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  changer     User        @relation("IntegrationAuditChanger", fields: [changedBy], references: [id], onDelete: Restrict)
+
+  @@index([integrationId])
+  @@index([changedBy])
+  @@index([createdAt])
+}
+
+model IdempotencyKey {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idempotencyKey  String   @unique @db.VarChar(200)
+  scope           String   @db.VarChar(100)
+  requestHash     String   @db.VarChar(128)
+  responseStatus  Int
+  responseHeaders Json?
+  responseBody    String?  @db.Text
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([idempotencyKey])
+  @@index([scope])
+  @@index([expiresAt])
+}
+
+enum ProviderCategory {
+  payment
+  email
+  sms
+  whatsapp
+  storage
+  analytics
+  other
+}
+
+enum HealthStatus {
+  healthy
+  degraded
+  unhealthy
+  unknown
+}
+
+enum WebhookEventStatus {
+  pending
+  processing
+  succeeded
+  failed
+  dead_letter
+}
+
+enum InquiryDocumentType {
+  PENSION
+  COMMERCIAL_REGISTRY
+  EMPLOYEE
+  NEITHER
+}
+
+model Inquiry {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerName  String @db.VarChar(200)
+  customerPhone String @db.VarChar(50)
+  address       String? @db.Text
+  occupation    String? @db.VarChar(200)
+
+  documentType     InquiryDocumentType
+  documentImage    String?
+  idCardFrontImage String?
+  idCardBackImage  String?
+
+  guarantorIdFrontImage   String?
+  guarantorIdBackImage    String?
+  guarantorSignatureImage String?
+
+  downPayment  Decimal?    @db.Decimal(10, 2)
+  motorcycleId String?     @db.Uuid
+  motorcycle   Motorcycle? @relation(fields: [motorcycleId], references: [id])
+  financingCompanyId String? @db.Uuid
+  financingCompany   FinancingCompany? @relation(fields: [financingCompanyId], references: [id])
+  installmentDurationId String? @db.Uuid
+  installmentDuration   InstallmentDuration? @relation(fields: [installmentDurationId], references: [id])
+
+  createdBy String? @db.Uuid
+  user      User?   @relation(fields: [createdBy], references: [id])
+
+  branchId String? @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  installmentRequest InstallmentRequest?
+}
+
+enum SalePaymentMethod {
+  CASH
+  VISA
+}
+
+model Sale {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  motorcycleId String     @db.Uuid
+  motorcycle   Motorcycle @relation(fields: [motorcycleId], references: [id])
+
+  customerName    String  @db.VarChar(200)
+  customerPhone   String  @db.VarChar(50)
+  customerIdImage String?
+
+  salePrice     Decimal           @db.Decimal(10, 2)
+  paymentMethod SalePaymentMethod
+
+  branchId String? @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdBy String? @db.Uuid
+  user      User?   @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SaleRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model SaleRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  customerName  String @db.VarChar(200)
+  customerPhone String @db.VarChar(50)
+
+  motorcycleId String     @db.Uuid
+  motorcycle   Motorcycle @relation(fields: [motorcycleId], references: [id])
+
+  financingCompanyId String           @db.Uuid
+  financingCompany   FinancingCompany @relation(fields: [financingCompanyId], references: [id])
+
+  requestedAmount Decimal           @db.Decimal(10, 2)
+  status          SaleRequestStatus @default(PENDING)
+
+  branchId String? @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdBy String? @db.Uuid
+  user      User?   @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  installmentPlan PosInstallmentPlan?
+}
+
+enum PosReservationStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+model PosReservation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  customerName  String @db.VarChar(200)
+  customerPhone String @db.VarChar(50)
+
+  motorcycleId String     @db.Uuid
+  motorcycle   Motorcycle @relation(fields: [motorcycleId], references: [id])
+
+  holdAmount      Decimal              @db.Decimal(10, 2)
+  reservationDate DateTime             @default(now())
+  status          PosReservationStatus @default(ACTIVE)
+
+  branchId String? @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdBy String? @db.Uuid
+  user      User?   @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PosInstallmentPlanStatus {
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+}
+
+model PosInstallmentPlan {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  saleRequestId String?      @unique @db.Uuid
+  saleRequest   SaleRequest? @relation(fields: [saleRequestId], references: [id])
+
+  customerName  String @db.VarChar(200)
+  customerPhone String @db.VarChar(50)
+
+  motorcycleId String     @db.Uuid
+  motorcycle   Motorcycle @relation(fields: [motorcycleId], references: [id])
+
+  totalAmount      Decimal @db.Decimal(12, 2)
+  paidAmount       Decimal @default(0) @db.Decimal(12, 2)
+  remainingBalance Decimal @db.Decimal(12, 2)
+
+  status PosInstallmentPlanStatus @default(ACTIVE)
+
+  branchId String? @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdBy String? @db.Uuid
+  user      User?   @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  installments PosInstallment[]
+}
+
+enum PosInstallmentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+model PosInstallment {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  planId String             @db.Uuid
+  plan   PosInstallmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  dueDate DateTime @db.Date
+
+  amount     Decimal @db.Decimal(12, 2)
+  paidAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  status PosInstallmentStatus @default(UNPAID)
+  paidAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Desktop-specific Permissions ──────────────────────────────────
+// Desktop-only role and permission data.
+model DesktopPermission {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation("DesktopPermissions", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Page/feature key (e.g. "sales", "inventory", "installments", "inquiries", etc.)
+  pageKey String  @db.VarChar(80)
+  canView Boolean @default(false)
+  canEdit Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, pageKey])
+  @@index([userId])
+}
+
+// ─── Desktop Attendance ─────────────────────────────────────────────
+model DesktopAttendance {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation("DesktopAttendance", fields: [userId], references: [id], onDelete: Cascade)
+
+  checkIn  DateTime
+  checkOut DateTime?
+  branchId String?   @db.Uuid
+  branch   Branch?   @relation("DesktopAttendanceBranch", fields: [branchId], references: [id])
+  notes    String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([checkIn])
+}

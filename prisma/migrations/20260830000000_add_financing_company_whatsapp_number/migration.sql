@@ -1,0 +1,2 @@
+ALTER TABLE "FinancingCompany"
+ADD COLUMN IF NOT EXISTS "whatsappNumber" VARCHAR(20) NOT NULL DEFAULT '';
