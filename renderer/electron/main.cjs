@@ -36,7 +36,8 @@ function run(command, args, env, cwd = rootPath()) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], shell: spawnNeedsShell(command) });
     let stderr = '';
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.stdout.on('data', (chunk) => { console.log(`[run] ${chunk.toString().trimEnd()}`); });
+    child.stderr.on('data', (chunk) => { stderr += chunk; console.error(`[run:err] ${chunk.toString().trimEnd()}`); });
     child.once('error', (error) => reject(new Error(spawnFailureMessage(command, args, error))));
     child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(stderr.trim() || spawnFailureMessage(command, args, { code: `exit ${code}` }))));
   });
