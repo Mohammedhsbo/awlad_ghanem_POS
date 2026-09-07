@@ -91,7 +91,17 @@ copyPackage('bcrypt', packageRoot('bcrypt', repoRoot), path.join(dependenciesRoo
 assertNoSymlinks(stageRoot);
 
 const runnerContent = `
-require('./node_modules/prisma/build/index.js');
+const { spawnSync } = require('node:child_process');
+const path = require('node:path');
+
+const entry = path.join(__dirname, 'node_modules', 'prisma', 'build', 'index.js');
+const result = spawnSync(process.execPath, [entry, ...process.argv.slice(2)], {
+  stdio: 'inherit',
+  cwd: __dirname,
+  env: process.env,
+});
+
+process.exit(result.status === null ? 1 : result.status);
 `;
 writeFileSync(path.join(stageRoot, 'prisma-runner.js'), runnerContent, 'utf8');
 
