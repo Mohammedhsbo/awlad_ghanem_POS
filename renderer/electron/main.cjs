@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
-const { existsSync, readFileSync, statSync, writeFileSync } = require('node:fs');
+const { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync, rmSync, renameSync, copyFileSync } = require('node:fs');
 const { spawn, spawnSync } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { PostgresManager, POSTGRES_PORT } = require('./postgres-manager.cjs');
@@ -13,6 +13,7 @@ let postgres;
 let startup = { state: 'starting' };
 
 function rootPath(...parts) { return app.isPackaged ? path.join(process.resourcesPath, ...parts) : path.resolve(__dirname, '../..', ...parts); }
+function prismaRuntimePath(...parts) { return path.join(app.getPath('userData'), 'prisma-runtime', ...parts); }
 function spawnNeedsShell(command) {
   return process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(command);
 }
@@ -31,9 +32,9 @@ function spawnFailureMessage(command, args, error) {
   const target = describeSpawnTarget(command);
   return `Failed to spawn ${JSON.stringify(command)} ${JSON.stringify(args)}: ${error.code || error.message}. Resolved path=${JSON.stringify(target.path)} exists=${target.exists} type=${target.type} shell=${spawnNeedsShell(command)}`;
 }
-function run(command, args, env) {
+function run(command, args, env, cwd = rootPath()) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: rootPath(), env, stdio: ['ignore', 'pipe', 'pipe'], shell: spawnNeedsShell(command) });
+    const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], shell: spawnNeedsShell(command) });
     let stderr = '';
     child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.once('error', (error) => reject(new Error(spawnFailureMessage(command, args, error))));
@@ -56,44 +57,60 @@ function runtimeEnvironment(databasePassword) {
 function writeSmokeStatus(status) {
   if (process.env.POS_SMOKE_STATUS_PATH) writeFileSync(process.env.POS_SMOKE_STATUS_PATH, JSON.stringify(status));
 }
-function resolveSystemNode() {
-  // On macOS/Linux use the system node so NODE_PATH is respected by the
-  // standard module loader (Electron's patched loader ignores NODE_PATH).
-  // On Windows, Electron with ELECTRON_RUN_AS_NODE works fine.
-  if (process.platform === 'win32') return null;
-  const result = spawnSync('which', ['node'], { encoding: 'utf8' });
-  const found = result.stdout?.trim();
-  if (found && existsSync(found)) return found;
-  // Common fixed paths on macOS runners
-  for (const p of ['/usr/local/bin/node', '/opt/homebrew/bin/node', '/usr/bin/node']) {
-    if (existsSync(p)) return p;
+function runtimeVersionMatches(runtimeRoot, version) {
+  try {
+    return existsSync(path.join(runtimeRoot, 'node_modules'))
+      && existsSync(path.join(runtimeRoot, 'prisma-runner.js'))
+      && existsSync(path.join(runtimeRoot, 'seed.mjs'))
+      && JSON.parse(readFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), 'utf8')).hash === version.hash;
+  } catch {
+    return false;
   }
-  return null;
+}
+function preparePrismaRuntime() {
+  const runtimeRoot = prismaRuntimePath();
+  const bundledRoot = rootPath('prisma-cli');
+  const versionPath = path.join(bundledRoot, 'prisma-runtime-version.json');
+  const version = JSON.parse(readFileSync(versionPath, 'utf8'));
+  const startedAt = Date.now();
+  if (runtimeVersionMatches(runtimeRoot, version)) {
+    console.log(`[startup] Prisma runtime node_modules reused in ${Date.now() - startedAt}ms`);
+    return runtimeRoot;
+  }
+
+  const temporaryNodeModules = `${path.join(runtimeRoot, 'node_modules')}.tmp-${process.pid}`;
+  try {
+    mkdirSync(runtimeRoot, { recursive: true });
+    rmSync(temporaryNodeModules, { recursive: true, force: true });
+    cpSync(path.join(bundledRoot, 'prisma-cli-deps'), temporaryNodeModules, { recursive: true, dereference: true });
+    rmSync(path.join(runtimeRoot, 'node_modules'), { recursive: true, force: true });
+    renameSync(temporaryNodeModules, path.join(runtimeRoot, 'node_modules'));
+    copyFileSync(path.join(bundledRoot, 'prisma-runner.js'), path.join(runtimeRoot, 'prisma-runner.js'));
+    copyFileSync(rootPath('prisma', 'seed.mjs'), path.join(runtimeRoot, 'seed.mjs'));
+    writeFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), JSON.stringify(version) + '\n', 'utf8');
+    console.log(`[startup] Prisma runtime node_modules freshly copied in ${Date.now() - startedAt}ms`);
+    return runtimeRoot;
+  } catch (error) {
+    rmSync(temporaryNodeModules, { recursive: true, force: true });
+    throw new Error(`Unable to prepare Prisma runtime in ${runtimeRoot}; check disk space and permissions: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
 }
 async function prepareDatabase(env) {
   const prismaCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   if (app.isPackaged) {
-    const prismaDepsPath = path.join(process.resourcesPath, 'prisma-cli', 'prisma-cli-deps');
-    const systemNode = resolveSystemNode();
-    if (systemNode) {
-      // Use system node: its module loader respects NODE_PATH for @prisma/engines
-      await run(systemNode, [rootPath('prisma-cli', 'build', 'index.js'), 'migrate', 'deploy'], {
-        ...env,
-        NODE_PATH: prismaDepsPath,
-      });
-      await run(systemNode, [rootPath('prisma', 'seed.mjs')], env);
-    } else {
-      // Windows fallback: Electron as node (works on Windows)
-      await run(process.execPath, [rootPath('prisma-cli', 'build', 'index.js'), 'migrate', 'deploy'], {
-        ...env,
-        ELECTRON_RUN_AS_NODE: '1',
-        NODE_PATH: prismaDepsPath,
-      });
-      await run(process.execPath, [rootPath('prisma', 'seed.mjs')], {
-        ...env,
-        ELECTRON_RUN_AS_NODE: '1',
-      });
-    }
+    const runtimeRoot = preparePrismaRuntime();
+    await run(process.execPath, [path.join(runtimeRoot, 'prisma-runner.js'), 'migrate', 'deploy'], {
+      ...env,
+      ELECTRON_RUN_AS_NODE: '1',
+    }, runtimeRoot);
+    startup = { ...startup, database: { migrate: 'passed' } };
+    writeSmokeStatus(startup);
+    await run(process.execPath, [path.join(runtimeRoot, 'seed.mjs')], {
+      ...env,
+      ELECTRON_RUN_AS_NODE: '1',
+    }, runtimeRoot);
+    startup = { ...startup, database: { migrate: 'passed', seed: 'passed' } };
+    writeSmokeStatus(startup);
     return;
   }
   const prismaArgs = ['exec', 'prisma', 'migrate', 'deploy'];

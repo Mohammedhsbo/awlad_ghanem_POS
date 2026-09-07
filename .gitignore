@@ -6,3 +6,6 @@ resources/postgres-binaries/
 .env
 renderer/release/
 renderer/package/win-unpacked
+.build/
+
+.build/

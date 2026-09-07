@@ -1,4 +1,5 @@
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -78,11 +79,25 @@ function assertNoSymlinks(root) {
 rmSync(stageRoot, { recursive: true, force: true });
 const prismaRoot = packageRoot('prisma', repoRoot);
 const dependenciesRoot = path.join(stageRoot, 'prisma-cli-deps');
-copyPackage('prisma', prismaRoot, stageRoot, dependenciesRoot);
+copyPackage('prisma', prismaRoot, path.join(dependenciesRoot, 'prisma'), dependenciesRoot);
+copyPackage('@prisma/client', packageRoot('@prisma/client', repoRoot), path.join(dependenciesRoot, '@prisma', 'client'), dependenciesRoot);
+copyPackage('bcrypt', packageRoot('bcrypt', repoRoot), path.join(dependenciesRoot, 'bcrypt'), dependenciesRoot);
 assertNoSymlinks(stageRoot);
+
+const runnerContent = `
+require('./node_modules/prisma/build/index.js');
+`;
+writeFileSync(path.join(stageRoot, 'prisma-runner.js'), runnerContent, 'utf8');
 
 const engineFiles = findFiles(stageRoot, (name) => /(?:query_engine|schema-engine)-/.test(name));
 if (engineFiles.length === 0) throw new Error('Prisma runtime staging produced no engine binaries');
+
+const runtimeHash = createHash('sha256');
+for (const file of findFiles(dependenciesRoot, () => true).sort()) {
+  runtimeHash.update(path.relative(dependenciesRoot, file));
+  runtimeHash.update(readFileSync(file));
+}
+writeFileSync(path.join(stageRoot, 'prisma-runtime-version.json'), JSON.stringify({ hash: runtimeHash.digest('hex') }) + '\n', 'utf8');
 
 if (process.platform === 'darwin' && process.arch === 'x64') {
   const darwinEngineFiles = engineFiles.filter((file) => path.basename(file).includes('darwin'));

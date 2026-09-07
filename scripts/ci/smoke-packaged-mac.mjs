@@ -19,6 +19,9 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   if (!status || status.state !== 'ready') throw new Error(`Packaged app smoke test failed: ${JSON.stringify(status)}`);
+  if (status.database?.migrate !== 'passed' || status.database?.seed !== 'passed') {
+    throw new Error(`Packaged Prisma smoke test did not report successful migrate and seed: ${JSON.stringify(status)}`);
+  }
 
   const health = await fetch(`${apiUrl}/health/ready`);
   if (!health.ok) throw new Error(`API health check failed with HTTP ${health.status}`);
