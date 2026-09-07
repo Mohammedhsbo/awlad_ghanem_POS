@@ -11,6 +11,7 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "oxlint",
     "preview": "vite preview",
+    "dist:win": "pnpm --filter @motorcycle-system/api build && node -e \"require('fs').rmSync('../.build/server-deploy',{recursive:true,force:true})\" && pnpm --filter @motorcycle-system/api deploy --prod --legacy ../.build/server-deploy && node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --win nsis --x64 --publish never",
     "package:mac:x64": "node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --mac dmg --x64 --publish never"
   },
   "dependencies": {
@@ -43,18 +44,41 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "../resources/postgres-binaries", "to": "postgres-binaries" },
-      { "from": "../server/dist", "to": "server/dist" },
-      { "from": "../server/node_modules", "to": "server/node_modules" },
-      { "from": "../prisma", "to": "prisma" },
-      { "from": "../.build/prisma-cli", "to": "prisma-cli", "filter": ["**/*"] }
+      {
+        "from": "../resources/postgres-binaries",
+        "to": "postgres-binaries"
+      },
+      {
+        "from": "../.build/server-deploy",
+        "to": "server"
+      },
+      {
+        "from": "../prisma",
+        "to": "prisma"
+      },
+      {
+        "from": "../.build/prisma-cli",
+        "to": "prisma-cli",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "category": "public.app-category.business"
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "signAndEditExecutable": false
     },
     "nsis": {
