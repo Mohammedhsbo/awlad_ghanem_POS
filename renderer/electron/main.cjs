@@ -64,6 +64,7 @@ function runtimeVersionMatches(runtimeRoot, version) {
       && existsSync(path.join(runtimeRoot, 'prisma-runner.js'))
       && existsSync(path.join(runtimeRoot, 'seed.mjs'))
       && existsSync(path.join(runtimeRoot, '.prisma', 'client', 'default.js'))
+      && existsSync(path.join(runtimeRoot, 'prisma', 'migrations'))
       && JSON.parse(readFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), 'utf8')).hash === version.hash;
   } catch {
     return false;
@@ -99,6 +100,11 @@ function preparePrismaRuntime() {
     }
     copyFileSync(path.join(bundledRoot, 'prisma-runner.js'), path.join(runtimeRoot, 'prisma-runner.js'));
     copyFileSync(rootPath('prisma', 'seed.mjs'), path.join(runtimeRoot, 'seed.mjs'));
+    // Copy the full prisma/ directory (schema.prisma + migrations/) into runtimeRoot so that
+    // `prisma migrate deploy` discovers them via standard relative-path lookup (./prisma/schema.prisma)
+    // without needing --schema flags or absolute paths that can break with Prisma 6's config search.
+    rmSync(path.join(runtimeRoot, 'prisma'), { recursive: true, force: true });
+    cpSync(rootPath('prisma'), path.join(runtimeRoot, 'prisma'), { recursive: true, dereference: true });
     writeFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), JSON.stringify(version) + '\n', 'utf8');
     console.log(`[startup] Prisma runtime node_modules freshly copied in ${Date.now() - startedAt}ms`);
     return runtimeRoot;
@@ -111,8 +117,8 @@ async function prepareDatabase(env) {
   const prismaCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   if (app.isPackaged) {
     const runtimeRoot = preparePrismaRuntime();
-    const schemaPath = rootPath('prisma', 'schema.prisma');
-    await run(process.execPath, [path.join(runtimeRoot, 'prisma-runner.js'), 'migrate', 'deploy', '--schema', schemaPath], {
+    // cwd=runtimeRoot; Prisma discovers ./prisma/schema.prisma and ./prisma/migrations/ naturally.
+    await run(process.execPath, [path.join(runtimeRoot, 'prisma-runner.js'), 'migrate', 'deploy'], {
       ...env,
       ELECTRON_RUN_AS_NODE: '1',
     }, runtimeRoot);
