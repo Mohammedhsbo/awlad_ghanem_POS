@@ -33,7 +33,7 @@ function copyPackage(packageName, sourceRoot, destinationRoot) {
   cpSync(sourceRoot, destinationRoot, {
     recursive: true,
     dereference: true,
-    filter: (source) => path.basename(source) !== 'node_modules',
+    filter: (source) => path.basename(source) !== 'node_modules' && path.basename(source) !== '_nm',
   });
 
   const packageManifest = manifest(sourceRoot);
@@ -48,7 +48,7 @@ function copyPackage(packageName, sourceRoot, destinationRoot) {
     copyPackage(
       dependencyName,
       dependencyRoot,
-      path.join(destinationRoot, 'node_modules', dependencyName),
+      path.join(destinationRoot, '_nm', dependencyName),
     );
   }
 }
