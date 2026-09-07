@@ -110,7 +110,8 @@ async function prepareDatabase(env) {
   const prismaCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   if (app.isPackaged) {
     const runtimeRoot = preparePrismaRuntime();
-    await run(process.execPath, [path.join(runtimeRoot, 'prisma-runner.js'), 'migrate', 'deploy'], {
+    const schemaPath = rootPath('prisma', 'schema.prisma');
+    await run(process.execPath, [path.join(runtimeRoot, 'prisma-runner.js'), 'migrate', 'deploy', '--schema', schemaPath], {
       ...env,
       ELECTRON_RUN_AS_NODE: '1',
     }, runtimeRoot);
