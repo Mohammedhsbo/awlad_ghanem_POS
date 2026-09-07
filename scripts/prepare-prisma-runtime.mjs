@@ -80,7 +80,13 @@ rmSync(stageRoot, { recursive: true, force: true });
 const prismaRoot = packageRoot('prisma', repoRoot);
 const dependenciesRoot = path.join(stageRoot, 'prisma-cli-deps');
 copyPackage('prisma', prismaRoot, path.join(dependenciesRoot, 'prisma'), dependenciesRoot);
-copyPackage('@prisma/client', packageRoot('@prisma/client', repoRoot), path.join(dependenciesRoot, '@prisma', 'client'), dependenciesRoot);
+const prismaClientRoot = packageRoot('@prisma/client', repoRoot);
+copyPackage('@prisma/client', prismaClientRoot, path.join(dependenciesRoot, '@prisma', 'client'), dependenciesRoot);
+const generatedClientRoot = path.join(path.dirname(path.dirname(prismaClientRoot)), '.prisma', 'client');
+if (!existsSync(path.join(generatedClientRoot, 'default.js'))) {
+  throw new Error(`Could not locate generated Prisma Client at ${generatedClientRoot}`);
+}
+cpSync(generatedClientRoot, path.join(dependenciesRoot, '.prisma', 'client'), { recursive: true, dereference: true });
 copyPackage('bcrypt', packageRoot('bcrypt', repoRoot), path.join(dependenciesRoot, 'bcrypt'), dependenciesRoot);
 assertNoSymlinks(stageRoot);
 

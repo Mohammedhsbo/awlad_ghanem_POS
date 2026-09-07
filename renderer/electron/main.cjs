@@ -62,6 +62,7 @@ function runtimeVersionMatches(runtimeRoot, version) {
     return existsSync(path.join(runtimeRoot, 'node_modules'))
       && existsSync(path.join(runtimeRoot, 'prisma-runner.js'))
       && existsSync(path.join(runtimeRoot, 'seed.mjs'))
+      && existsSync(path.join(runtimeRoot, '.prisma', 'client', 'default.js'))
       && JSON.parse(readFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), 'utf8')).hash === version.hash;
   } catch {
     return false;
@@ -85,6 +86,16 @@ function preparePrismaRuntime() {
     cpSync(path.join(bundledRoot, 'prisma-cli-deps'), temporaryNodeModules, { recursive: true, dereference: true });
     rmSync(path.join(runtimeRoot, 'node_modules'), { recursive: true, force: true });
     renameSync(temporaryNodeModules, path.join(runtimeRoot, 'node_modules'));
+    // Prisma resolves '.prisma/client' relative to the parent of node_modules (i.e. runtimeRoot),
+    // but the generated client was bundled inside prisma-cli-deps/.prisma/client and therefore
+    // lands at node_modules/.prisma/client after the copy above.  Promote it to the expected
+    // location so that @prisma/client/default.js can find it.
+    const generatedClientSrc = path.join(runtimeRoot, 'node_modules', '.prisma', 'client');
+    const generatedClientDst = path.join(runtimeRoot, '.prisma', 'client');
+    if (existsSync(generatedClientSrc)) {
+      rmSync(generatedClientDst, { recursive: true, force: true });
+      cpSync(generatedClientSrc, generatedClientDst, { recursive: true, dereference: true });
+    }
     copyFileSync(path.join(bundledRoot, 'prisma-runner.js'), path.join(runtimeRoot, 'prisma-runner.js'));
     copyFileSync(rootPath('prisma', 'seed.mjs'), path.join(runtimeRoot, 'seed.mjs'));
     writeFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), JSON.stringify(version) + '\n', 'utf8');
