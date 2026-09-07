@@ -140,7 +140,7 @@ async function startApi(env) {
   const apiEntry = rootPath('server', 'dist', 'main.js');
   const apiCommand = process.execPath;
   const apiArgs = [apiEntry];
-  apiProcess = spawn(apiCommand, apiArgs, { cwd: rootPath('server'), env, stdio: ['ignore', 'pipe', 'pipe'] });
+  apiProcess = spawn(apiCommand, apiArgs, { cwd: rootPath('server'), env: { ...env, ELECTRON_RUN_AS_NODE: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   apiProcess.once('error', (error) => { console.error(`[api] ${spawnFailureMessage(apiCommand, apiArgs, error)}`); });
   apiProcess.stdout.on('data', (chunk) => console.log(`[api] ${chunk}`));
   apiProcess.stderr.on('data', (chunk) => console.error(`[api] ${chunk}`));
