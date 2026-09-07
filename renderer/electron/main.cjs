@@ -59,7 +59,10 @@ function writeSmokeStatus(status) {
 async function prepareDatabase(env) {
   const prismaCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   if (app.isPackaged) {
-    await run(process.execPath, [rootPath('prisma-cli', 'build', 'index.js'), 'migrate', 'deploy'], { ...env, ELECTRON_RUN_AS_NODE: '1' });
+    await run(process.execPath, [rootPath('prisma-cli', 'build', 'index.js'), 'migrate', 'deploy'], {
+      ...env,
+      ELECTRON_RUN_AS_NODE: '1',
+    });
     await run(process.execPath, [rootPath('prisma', 'seed.mjs')], env);
     return;
   }

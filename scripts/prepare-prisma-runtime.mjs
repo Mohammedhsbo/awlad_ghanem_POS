@@ -26,7 +26,7 @@ function dependenciesOf(packageManifest) {
   ])];
 }
 
-function copyPackage(packageName, sourceRoot, destinationRoot) {
+function copyPackage(packageName, sourceRoot, destinationRoot, dependenciesRoot) {
   if (existsSync(path.join(destinationRoot, 'package.json'))) return;
 
   mkdirSync(destinationRoot, { recursive: true });
@@ -48,7 +48,8 @@ function copyPackage(packageName, sourceRoot, destinationRoot) {
     copyPackage(
       dependencyName,
       dependencyRoot,
-      path.join(destinationRoot, '_nm', dependencyName),
+      path.join(dependenciesRoot, dependencyName),
+      dependenciesRoot,
     );
   }
 }
@@ -76,7 +77,8 @@ function assertNoSymlinks(root) {
 
 rmSync(stageRoot, { recursive: true, force: true });
 const prismaRoot = packageRoot('prisma', repoRoot);
-copyPackage('prisma', prismaRoot, stageRoot);
+const dependenciesRoot = path.join(stageRoot, 'node_modules');
+copyPackage('prisma', prismaRoot, stageRoot, dependenciesRoot);
 assertNoSymlinks(stageRoot);
 
 const engineFiles = findFiles(stageRoot, (name) => /(?:query_engine|schema-engine)-/.test(name));
