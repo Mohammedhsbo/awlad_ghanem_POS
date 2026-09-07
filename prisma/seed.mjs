@@ -1,7 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import prismaClientPackage from "@prisma/client";
 import bcrypt from "bcrypt";
 import { writeFileSync } from "node:fs";
 
+const { PrismaClient } = prismaClientPackage;
 const prisma = new PrismaClient();
 const cashierPermissions = [
   ["order", "create"], ["order", "read"], ["order", "update"], ["customer", "read"], ["customer", "create"],
