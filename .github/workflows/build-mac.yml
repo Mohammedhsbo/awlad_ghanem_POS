@@ -52,9 +52,6 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm exec prisma generate
 
-      - name: Build API
-        run: pnpm --filter @motorcycle-system/api build
-
       - name: Build macOS Intel Electron app
         run: pnpm --dir renderer package:mac:x64
 
