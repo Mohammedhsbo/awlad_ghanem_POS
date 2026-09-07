@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 const { existsSync, readFileSync, statSync, writeFileSync } = require('node:fs');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { PostgresManager, POSTGRES_PORT } = require('./postgres-manager.cjs');
 
@@ -56,14 +56,44 @@ function runtimeEnvironment(databasePassword) {
 function writeSmokeStatus(status) {
   if (process.env.POS_SMOKE_STATUS_PATH) writeFileSync(process.env.POS_SMOKE_STATUS_PATH, JSON.stringify(status));
 }
+function resolveSystemNode() {
+  // On macOS/Linux use the system node so NODE_PATH is respected by the
+  // standard module loader (Electron's patched loader ignores NODE_PATH).
+  // On Windows, Electron with ELECTRON_RUN_AS_NODE works fine.
+  if (process.platform === 'win32') return null;
+  const result = spawnSync('which', ['node'], { encoding: 'utf8' });
+  const found = result.stdout?.trim();
+  if (found && existsSync(found)) return found;
+  // Common fixed paths on macOS runners
+  for (const p of ['/usr/local/bin/node', '/opt/homebrew/bin/node', '/usr/bin/node']) {
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
 async function prepareDatabase(env) {
   const prismaCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   if (app.isPackaged) {
-    await run(process.execPath, [rootPath('prisma-cli', 'build', 'index.js'), 'migrate', 'deploy'], {
-      ...env,
-      ELECTRON_RUN_AS_NODE: '1',
-    });
-    await run(process.execPath, [rootPath('prisma', 'seed.mjs')], env);
+    const prismaDepsPath = path.join(process.resourcesPath, 'prisma-cli', 'prisma-cli-deps');
+    const systemNode = resolveSystemNode();
+    if (systemNode) {
+      // Use system node: its module loader respects NODE_PATH for @prisma/engines
+      await run(systemNode, [rootPath('prisma-cli', 'build', 'index.js'), 'migrate', 'deploy'], {
+        ...env,
+        NODE_PATH: prismaDepsPath,
+      });
+      await run(systemNode, [rootPath('prisma', 'seed.mjs')], env);
+    } else {
+      // Windows fallback: Electron as node (works on Windows)
+      await run(process.execPath, [rootPath('prisma-cli', 'build', 'index.js'), 'migrate', 'deploy'], {
+        ...env,
+        ELECTRON_RUN_AS_NODE: '1',
+        NODE_PATH: prismaDepsPath,
+      });
+      await run(process.execPath, [rootPath('prisma', 'seed.mjs')], {
+        ...env,
+        ELECTRON_RUN_AS_NODE: '1',
+      });
+    }
     return;
   }
   const prismaArgs = ['exec', 'prisma', 'migrate', 'deploy'];

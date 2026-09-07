@@ -77,7 +77,7 @@ function assertNoSymlinks(root) {
 
 rmSync(stageRoot, { recursive: true, force: true });
 const prismaRoot = packageRoot('prisma', repoRoot);
-const dependenciesRoot = path.join(stageRoot, 'node_modules');
+const dependenciesRoot = path.join(stageRoot, 'prisma-cli-deps');
 copyPackage('prisma', prismaRoot, stageRoot, dependenciesRoot);
 assertNoSymlinks(stageRoot);
 
