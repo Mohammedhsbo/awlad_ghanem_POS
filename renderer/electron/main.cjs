@@ -8,8 +8,7 @@ const { PostgresManager } = require('./postgres-manager.cjs');
 if (process.env.POS_SMOKE_USER_DATA_PATH) app.setPath('userData', process.env.POS_SMOKE_USER_DATA_PATH);
 
 const API_PORT = 3000;
-const API_READY_TIMEOUT_MS = 45000;
-const API_READY_POLL_INTERVAL_MS = 500;
+const API_READY_POLL_INTERVAL_MS = 1000;
 let apiProcess;
 let postgres;
 let startup = { state: 'starting' };
@@ -149,8 +148,7 @@ async function startApi(env) {
   apiProcess.stdout.on('data', (chunk) => console.log(`[api] ${chunk}`));
   apiProcess.stderr.on('data', (chunk) => console.error(`[api] ${chunk}`));
   const apiSpawnedAt = Date.now();
-  const deadline = apiSpawnedAt + 90000;
-  while (Date.now() < deadline) {
+  while (true) {
     try {
       const response = await fetch(`http://127.0.0.1:${API_PORT}/health/ready`);
       if (response.ok) {
@@ -160,7 +158,6 @@ async function startApi(env) {
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, API_READY_POLL_INTERVAL_MS));
   }
-  throw new Error(`API did not become ready on port ${API_PORT} within 90000ms`);
 }
 async function startServices() {
   try {

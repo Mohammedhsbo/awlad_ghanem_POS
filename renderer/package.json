@@ -50,7 +50,9 @@
         "from": "../.build/server-deploy",
         "to": "server",
         "filter": [
-          "**/*"
+          "**/*",
+          "**/.*",
+          "**/.*/**/*"
         ]
       },
       {
@@ -61,7 +63,9 @@
         "from": "../.build/prisma-cli",
         "to": "prisma-cli",
         "filter": [
-          "**/*"
+          "**/*",
+          "**/.*",
+          "**/.*/**/*"
         ]
       }
     ],
@@ -100,7 +104,8 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer.nsh"
     }
   }
 }
