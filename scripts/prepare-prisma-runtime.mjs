@@ -28,10 +28,7 @@ function dependenciesOf(packageManifest) {
 }
 
 function copyPackage(packageName, sourceRoot, destinationRoot, dependenciesRoot) {
-  if (existsSync(path.join(destinationRoot, 'package.json'))) {
-    // destinationRoot already populated — nothing to do for this exact slot.
-    return;
-  }
+  if (existsSync(path.join(destinationRoot, 'package.json'))) return;
 
   mkdirSync(destinationRoot, { recursive: true });
   cpSync(sourceRoot, destinationRoot, {
@@ -49,34 +46,11 @@ function copyPackage(packageName, sourceRoot, destinationRoot, dependenciesRoot)
       if (packageManifest.optionalDependencies?.[dependencyName]) continue;
       throw new Error(`Unable to resolve Prisma runtime dependency ${dependencyName} for ${packageName}`, { cause: error });
     }
-
-    const requiredVersion = manifest(dependencyRoot).version;
-    const flatTarget = path.join(dependenciesRoot, dependencyName);
-
-    // Check whether a different version of this dependency is already staged at the flat root.
-    // If so, we cannot share it — nest this copy inside the requiring package's own node_modules
-    // (mirroring pnpm's actual resolution), so Node's upward walk finds the version-correct copy.
-    let useNested = false;
-    if (existsSync(path.join(flatTarget, 'package.json'))) {
-      const stagedVersion = manifest(flatTarget).version;
-      if (stagedVersion !== requiredVersion) {
-        useNested = true;
-      }
-    }
-
-    const depDestinationRoot = useNested
-      ? path.join(destinationRoot, 'node_modules', dependencyName)
-      : flatTarget;
-    // When nesting, the nested package's own transitive deps should still try the top-level
-    // flat dependenciesRoot first (Node walks upward through node_modules chains), and only
-    // get nested further if there's another version conflict at that level.
-    const depDependenciesRoot = dependenciesRoot;
-
     copyPackage(
       dependencyName,
       dependencyRoot,
-      depDestinationRoot,
-      depDependenciesRoot,
+      path.join(dependenciesRoot, dependencyName),
+      dependenciesRoot,
     );
   }
 }
@@ -113,7 +87,7 @@ if (!existsSync(path.join(generatedClientRoot, 'default.js'))) {
   throw new Error(`Could not locate generated Prisma Client at ${generatedClientRoot}`);
 }
 cpSync(generatedClientRoot, path.join(dependenciesRoot, '.prisma', 'client'), { recursive: true, dereference: true });
-copyPackage('bcrypt', packageRoot('bcrypt', repoRoot), path.join(dependenciesRoot, 'bcrypt'), dependenciesRoot);
+copyPackage('bcryptjs', packageRoot('bcryptjs', repoRoot), path.join(dependenciesRoot, 'bcryptjs'), dependenciesRoot);
 assertNoSymlinks(stageRoot);
 
 const runnerContent = `
