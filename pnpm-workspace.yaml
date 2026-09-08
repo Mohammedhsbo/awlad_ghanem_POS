@@ -13,3 +13,5 @@ allowBuilds:
   electron-winstaller: true
   esbuild: true
   prisma: true
+
+confirmModulesPurge: false

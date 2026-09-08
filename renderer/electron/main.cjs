@@ -197,7 +197,10 @@ async function printHtml({ html, printerName, silent = true }) {
   }
 }
 function createWindow() {
-  const window = new BrowserWindow({ width: 1280, height: 800, minWidth: 1024, minHeight: 640, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, 'preload.cjs') } });
+  const iconFile = process.platform === 'win32'
+    ? path.join(__dirname, '../build/icons/icon.ico')
+    : path.join(__dirname, '../build/icons/icon.icns');
+  const window = new BrowserWindow({ width: 1280, height: 800, minWidth: 1024, minHeight: 640, icon: iconFile, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, 'preload.cjs') } });
   window.loadFile(path.join(__dirname, '../dist/index.html'));
 }
 

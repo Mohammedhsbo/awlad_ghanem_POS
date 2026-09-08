@@ -37,6 +37,7 @@
   "build": {
     "appId": "com.motorcyclesystem.desktop",
     "productName": "awald ghanem POS",
+    "icon": "build/icons/icon",
     "directories": {
       "output": "release"
     },
@@ -70,6 +71,7 @@
       }
     ],
     "mac": {
+      "icon": "build/icons/icon.icns",
       "target": [
         {
           "target": "dmg",
@@ -109,6 +111,7 @@
       "category": "public.app-category.business"
     },
     "win": {
+      "icon": "build/icons/icon.ico",
       "target": [
         {
           "target": "nsis",

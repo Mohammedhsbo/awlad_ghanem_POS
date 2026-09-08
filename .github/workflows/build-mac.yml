@@ -57,7 +57,7 @@ jobs:
 
       - name: Verify packaged app architecture
         run: |
-          file "renderer/release/mac/Motorcycle System POS.app/Contents/MacOS/Motorcycle System POS"
+          file "renderer/release/mac/awald ghanem POS.app/Contents/MacOS/awald ghanem POS"
 
       - name: Run packaged runtime smoke test
         env:
@@ -66,7 +66,7 @@ jobs:
           POS_ADMIN_PASSWORD: admin123
         run: |
           node scripts/ci/smoke-packaged-mac.mjs \
-            "renderer/release/mac/Motorcycle System POS.app/Contents/MacOS/Motorcycle System POS"
+            "renderer/release/mac/awald ghanem POS.app/Contents/MacOS/awald ghanem POS"
 
       - name: Upload macOS Intel DMG
         uses: actions/upload-artifact@v4
