@@ -1,9 +1,11 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 const { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync, rmSync, renameSync, copyFileSync } = require('node:fs');
-const { spawn, spawnSync } = require('node:child_process');
+const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
-const { PostgresManager, POSTGRES_PORT } = require('./postgres-manager.cjs');
+const { PostgresManager } = require('./postgres-manager.cjs');
+
+if (process.env.POS_SMOKE_USER_DATA_PATH) app.setPath('userData', process.env.POS_SMOKE_USER_DATA_PATH);
 
 const API_PORT = 3000;
 const API_READY_TIMEOUT_MS = 45000;
@@ -42,14 +44,14 @@ function run(command, args, env, cwd = rootPath()) {
     child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(stderr.trim() || spawnFailureMessage(command, args, { code: `exit ${code}` }))));
   });
 }
-function runtimeEnvironment(databasePassword) {
+function runtimeEnvironment({ databaseUrl }) {
   return {
     ...process.env,
     NODE_ENV: 'development',
     APP_ENV: 'local',
     DESKTOP_RUNTIME: 'electron-pos',
     API_PORT: String(API_PORT),
-    DATABASE_URL: `postgresql://pos_app:${encodeURIComponent(databasePassword)}@127.0.0.1:${POSTGRES_PORT}/motorcycle_pos?schema=public`,
+    DATABASE_URL: databaseUrl,
     JWT_SECRET: randomBytes(32).toString('hex'),
     REDIS_URL: '',
     POS_CREDENTIALS_PATH: path.join(app.getPath('userData'), 'initial-credentials.json'),
@@ -62,9 +64,7 @@ function runtimeVersionMatches(runtimeRoot, version) {
   try {
     return existsSync(path.join(runtimeRoot, 'node_modules'))
       && existsSync(path.join(runtimeRoot, 'prisma-runner.js'))
-      && existsSync(path.join(runtimeRoot, 'seed.mjs'))
       && existsSync(path.join(runtimeRoot, '.prisma', 'client', 'default.js'))
-      && existsSync(path.join(runtimeRoot, 'prisma', 'migrations'))
       && JSON.parse(readFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), 'utf8')).hash === version.hash;
   } catch {
     return false;
@@ -76,6 +76,17 @@ function preparePrismaRuntime() {
   const versionPath = path.join(bundledRoot, 'prisma-runtime-version.json');
   const version = JSON.parse(readFileSync(versionPath, 'utf8'));
   const startedAt = Date.now();
+
+  // Always re-copy prisma/ (schema.prisma + migrations/) and seed.mjs on every startup.
+  // The version hash below only covers prisma-cli-deps (node_modules) — it does NOT change
+  // when new migrations are added between releases.  If these files were gated on the hash
+  // check, a user whose runtime already has a matching hash would never receive new migrations,
+  // causing `migrate deploy` to exit 0 with no migrations applied against a fresh empty database.
+  mkdirSync(runtimeRoot, { recursive: true });
+  rmSync(path.join(runtimeRoot, 'prisma'), { recursive: true, force: true });
+  cpSync(rootPath('prisma'), path.join(runtimeRoot, 'prisma'), { recursive: true, dereference: true });
+  copyFileSync(rootPath('prisma', 'seed.mjs'), path.join(runtimeRoot, 'seed.mjs'));
+
   if (runtimeVersionMatches(runtimeRoot, version)) {
     console.log(`[startup] Prisma runtime node_modules reused in ${Date.now() - startedAt}ms`);
     return runtimeRoot;
@@ -83,7 +94,6 @@ function preparePrismaRuntime() {
 
   const temporaryNodeModules = `${path.join(runtimeRoot, 'node_modules')}.tmp-${process.pid}`;
   try {
-    mkdirSync(runtimeRoot, { recursive: true });
     rmSync(temporaryNodeModules, { recursive: true, force: true });
     cpSync(path.join(bundledRoot, 'prisma-cli-deps'), temporaryNodeModules, { recursive: true, dereference: true });
     rmSync(path.join(runtimeRoot, 'node_modules'), { recursive: true, force: true });
@@ -99,12 +109,6 @@ function preparePrismaRuntime() {
       cpSync(generatedClientSrc, generatedClientDst, { recursive: true, dereference: true });
     }
     copyFileSync(path.join(bundledRoot, 'prisma-runner.js'), path.join(runtimeRoot, 'prisma-runner.js'));
-    copyFileSync(rootPath('prisma', 'seed.mjs'), path.join(runtimeRoot, 'seed.mjs'));
-    // Copy the full prisma/ directory (schema.prisma + migrations/) into runtimeRoot so that
-    // `prisma migrate deploy` discovers them via standard relative-path lookup (./prisma/schema.prisma)
-    // without needing --schema flags or absolute paths that can break with Prisma 6's config search.
-    rmSync(path.join(runtimeRoot, 'prisma'), { recursive: true, force: true });
-    cpSync(rootPath('prisma'), path.join(runtimeRoot, 'prisma'), { recursive: true, dereference: true });
     writeFileSync(path.join(runtimeRoot, 'prisma-runtime-version.json'), JSON.stringify(version) + '\n', 'utf8');
     console.log(`[startup] Prisma runtime node_modules freshly copied in ${Date.now() - startedAt}ms`);
     return runtimeRoot;
@@ -144,37 +148,40 @@ async function startApi(env) {
   apiProcess.once('error', (error) => { console.error(`[api] ${spawnFailureMessage(apiCommand, apiArgs, error)}`); });
   apiProcess.stdout.on('data', (chunk) => console.log(`[api] ${chunk}`));
   apiProcess.stderr.on('data', (chunk) => console.error(`[api] ${chunk}`));
-  const startedAt = Date.now();
-  const deadline = startedAt + API_READY_TIMEOUT_MS;
+  const apiSpawnedAt = Date.now();
+  const deadline = apiSpawnedAt + 90000;
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`http://127.0.0.1:${API_PORT}/health/ready`);
       if (response.ok) {
-        console.log(`[startup] API ready on port ${API_PORT} after ${Date.now() - startedAt}ms`);
+        console.log(`[startup] API ready on port ${API_PORT} after ${Date.now() - apiSpawnedAt}ms`);
         return;
       }
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, API_READY_POLL_INTERVAL_MS));
   }
-  throw new Error(`API did not become ready on port ${API_PORT} within ${API_READY_TIMEOUT_MS}ms`);
+  throw new Error(`API did not become ready on port ${API_PORT} within 90000ms`);
 }
 async function startServices() {
   try {
     startup = { state: 'postgres' };
     writeSmokeStatus(startup);
     postgres = new PostgresManager({ userDataPath: app.getPath('userData'), resourcesPath: process.resourcesPath, isPackaged: app.isPackaged });
-    await postgres.start();
-    const env = runtimeEnvironment(postgres.password());
-    startup = { state: 'database' };
+    const postgresConfig = await postgres.start();
+    startup = { state: 'postgres', initialized: postgresConfig.initialized, port: postgresConfig.port };
+    writeSmokeStatus(startup);
+    const env = runtimeEnvironment(postgresConfig);
+    startup = { ...startup, state: 'database' };
     writeSmokeStatus(startup);
     await prepareDatabase(env);
-    startup = { state: 'api' };
+    startup = { ...startup, state: 'api' };
     writeSmokeStatus(startup);
     await startApi(env);
     const credentialsPath = path.join(app.getPath('userData'), 'initial-credentials.json');
     const credentials = existsSync(credentialsPath) ? JSON.parse(readFileSync(credentialsPath, 'utf8')) : undefined;
-    startup = { state: 'ready', credentials };
+    startup = { ...startup, state: 'ready', credentials };
     writeSmokeStatus(startup);
+    if (process.env.POS_SMOKE_EXIT_AFTER_READY) setTimeout(() => app.quit(), 250);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[startup]', message);

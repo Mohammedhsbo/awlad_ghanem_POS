@@ -1,5 +1,5 @@
 import prismaClientPackage from "@prisma/client";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { writeFileSync } from "node:fs";
 
 const { PrismaClient } = prismaClientPackage;
