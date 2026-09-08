@@ -36,7 +36,7 @@
   },
   "build": {
     "appId": "com.motorcyclesystem.desktop",
-    "productName": "Motorcycle System POS",
+    "productName": "awald ghanem POS",
     "directories": {
       "output": "release"
     },
@@ -80,6 +80,28 @@
       ],
       "extraResources": [
         {
+          "from": "../.build/server-deploy",
+          "to": "server",
+          "filter": [
+            "**/*",
+            "**/.*",
+            "**/.*/**/*"
+          ]
+        },
+        {
+          "from": "../prisma",
+          "to": "prisma"
+        },
+        {
+          "from": "../.build/prisma-cli",
+          "to": "prisma-cli",
+          "filter": [
+            "**/*",
+            "**/.*",
+            "**/.*/**/*"
+          ]
+        },
+        {
           "from": "../resources/postgres-binaries/darwin/${arch}",
           "to": "postgres-binaries"
         }
@@ -90,10 +112,34 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "extraResources": [
+        {
+          "from": "../.build/server-deploy",
+          "to": "server",
+          "filter": [
+            "**/*",
+            "**/.*",
+            "**/.*/**/*"
+          ]
+        },
+        {
+          "from": "../prisma",
+          "to": "prisma"
+        },
+        {
+          "from": "../.build/prisma-cli",
+          "to": "prisma-cli",
+          "filter": [
+            "**/*",
+            "**/.*",
+            "**/.*/**/*"
+          ]
+        },
         {
           "from": "../resources/postgres-binaries/win/${arch}",
           "to": "postgres-binaries"
