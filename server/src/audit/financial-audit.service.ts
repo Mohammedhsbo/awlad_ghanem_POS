@@ -11,7 +11,7 @@
  */
 
 import { Inject, Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from "../prisma/prisma.service.js";
 
 export enum FinancialAuditAction {

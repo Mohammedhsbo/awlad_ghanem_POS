@@ -9,7 +9,7 @@
  * - Concurrency protection
  */
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from '@prisma/client';
 import { ConflictException, BadRequestException } from "@nestjs/common";
 
 /**

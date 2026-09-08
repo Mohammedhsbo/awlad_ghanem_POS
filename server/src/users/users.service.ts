@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '../prisma/prisma-cjs.js';
 import type {
   CreateUserRequest,
   Language,
@@ -512,6 +513,6 @@ export class UsersService {
   }
 
   private isPrismaConflict(error: unknown) {
-    return error instanceof Prisma.PrismaClientKnownRequestError && ["P2003", "P2014"].includes(error.code);
+    return error instanceof PrismaClientKnownRequestError && ["P2003", "P2014"].includes(error.code);
   }
 }

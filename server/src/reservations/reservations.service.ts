@@ -6,7 +6,8 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import { TransactionIsolationLevel } from '../prisma/prisma-cjs.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { SocketGateway } from '../socket/socket.gateway.js';
@@ -317,7 +318,7 @@ export class ReservationsService {
           };
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          isolationLevel: TransactionIsolationLevel.Serializable,
           maxWait: 5000,
           timeout: 10000,
         },
@@ -991,7 +992,7 @@ export class ReservationsService {
           };
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          isolationLevel: TransactionIsolationLevel.Serializable,
           maxWait: 5000,
           timeout: 10000,
         },
@@ -1105,7 +1106,7 @@ export class ReservationsService {
             });
           },
           {
-            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            isolationLevel: TransactionIsolationLevel.Serializable,
             maxWait: 5000,
             timeout: 10000,
           },
@@ -1279,7 +1280,7 @@ export class ReservationsService {
           };
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          isolationLevel: TransactionIsolationLevel.Serializable,
           maxWait: 5000,
           timeout: 10000,
         }

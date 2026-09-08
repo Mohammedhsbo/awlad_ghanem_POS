@@ -1,4 +1,5 @@
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '../prisma/prisma-cjs.js';
 
 /**
  * True for the transient failures a concurrent writer is expected to hit and
@@ -7,7 +8,7 @@ import { Prisma } from '@prisma/client';
  * two of them touch the same rows.
  */
 function isRetryableConcurrencyError(error: unknown): boolean {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+  if (!(error instanceof PrismaClientKnownRequestError)) {
     return false;
   }
 

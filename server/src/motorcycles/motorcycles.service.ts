@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '../prisma/prisma-cjs.js';
 import { SocketGateway } from '../socket/index.js';
 import { 
   CreateMotorcycleRequest, 
@@ -84,7 +85,7 @@ export class MotorcyclesService {
         }
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
         const target = String(error.meta?.target ?? '').toLowerCase();
         if (target.includes('vin')) {
           throw new ConflictException({ code: 'VIN_EXISTS', message: 'VIN already exists' });
@@ -256,7 +257,7 @@ export class MotorcyclesService {
         }
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
         const target = String(error.meta?.target ?? '').toLowerCase();
         if (target.includes('vin')) {
           throw new ConflictException({ code: 'VIN_EXISTS', message: 'VIN already exists' });

@@ -6,7 +6,7 @@ import {
   BadRequestException,
   ConflictException,
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from '@prisma/client';
 import {
   CreateRefundRequest,
   PaymentStatus,

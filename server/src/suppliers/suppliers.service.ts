@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '../prisma/prisma-cjs.js';
 import { CreateSupplierRequest, UpdateSupplierRequest } from '@motorcycle-system/shared-types';
 
 @Injectable()
@@ -20,7 +21,7 @@ export class SuppliersService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException({ code: 'SUPPLIER_NAME_EXISTS', message: 'A supplier with this name already exists' });
       }
       throw error;
@@ -113,7 +114,7 @@ export class SuppliersService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException({ code: 'SUPPLIER_NAME_EXISTS', message: 'A supplier with this name already exists' });
       }
       throw error;

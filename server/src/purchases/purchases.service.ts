@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError, TransactionIsolationLevel } from '../prisma/prisma-cjs.js';
 import { CreatePurchaseRequest, UpdatePurchaseRequest, ReceivePurchaseRequest } from '@motorcycle-system/shared-types';
 import { generatePurchaseNumber, withUniqueRetry } from '../utils/number-generator.js';
 import { SocketGateway } from '../socket/index.js';
@@ -18,7 +19,7 @@ async function createMotorcycleForVin<T>(vin: string, create: () => Promise<T>):
     return await create();
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === 'P2002' &&
       String(error.meta?.target ?? '').includes('vin')
     ) {
@@ -487,7 +488,7 @@ export class PurchasesService {
         receivedMotorcycles,
       };
     }, {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      isolationLevel: TransactionIsolationLevel.Serializable,
       maxWait: 10000,
       timeout: 15000,
     }));

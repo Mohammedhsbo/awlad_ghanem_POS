@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
   FinancingCompanyCreate,

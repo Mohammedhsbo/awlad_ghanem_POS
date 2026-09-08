@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DomainEvent } from './notifications.types.js';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 @Injectable()
 export class OutboxService {

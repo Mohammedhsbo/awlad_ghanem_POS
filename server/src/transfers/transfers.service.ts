@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import { join as prismaJoin } from '../prisma/prisma-cjs.js';
 import { CreateTransferRequest } from '@motorcycle-system/shared-types';
 import { generateTransferNumber, withUniqueRetry } from '../utils/number-generator.js';
 import { SocketGateway } from '../socket/index.js';
@@ -318,7 +319,7 @@ export class TransfersService {
       }
 
       const lockedMotorcycles = await tx.$queryRaw<{ id: string; status: string; branchId: string; vin: string }[]>`
-        SELECT id, status, "branchId", vin FROM "Motorcycle" WHERE id = ANY(ARRAY[${Prisma.join(motorcycleIds)}]::uuid[]) FOR UPDATE
+        SELECT id, status, "branchId", vin FROM "Motorcycle" WHERE id = ANY(ARRAY[${prismaJoin(motorcycleIds)}]::uuid[]) FOR UPDATE
       `;
 
       // 3. Verify they are all still available
@@ -392,7 +393,7 @@ export class TransfersService {
       const motorcycleIds = items.map(i => i.motorcycleId);
 
       const lockedMotorcycles = await tx.$queryRaw<{ id: string; status: string; vin: string }[]>`
-        SELECT id, status, vin FROM "Motorcycle" WHERE id = ANY(ARRAY[${Prisma.join(motorcycleIds)}]::uuid[]) FOR UPDATE
+        SELECT id, status, vin FROM "Motorcycle" WHERE id = ANY(ARRAY[${prismaJoin(motorcycleIds)}]::uuid[]) FOR UPDATE
       `;
 
       // 3. Optional guard: Verify they are in_transfer

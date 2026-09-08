@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import { TransactionIsolationLevel } from '../prisma/prisma-cjs.js';
 import { CreateOrderDto, CreateOrderResponse } from '@motorcycle-system/shared-types';
 import { generateInvoiceNumber, generateOrderNumber, withUniqueRetry } from '../utils/number-generator.js';
 import { SocketGateway } from '../socket/index.js';
@@ -379,7 +380,7 @@ export class OrdersService {
       }
 
       return this.prisma.$transaction(runTx, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        isolationLevel: TransactionIsolationLevel.Serializable,
         maxWait: 5000,
         timeout: 10000,
       });
@@ -516,7 +517,7 @@ export class OrdersService {
           };
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          isolationLevel: TransactionIsolationLevel.Serializable,
           maxWait: 5000,
           timeout: 10000,
         }
@@ -1001,7 +1002,7 @@ export class OrdersService {
           };
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          isolationLevel: TransactionIsolationLevel.Serializable,
           maxWait: 5000,
           timeout: 10000,
         }
@@ -1339,7 +1340,7 @@ export class OrdersService {
           }
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          isolationLevel: TransactionIsolationLevel.Serializable,
           maxWait: 5000,
           timeout: 10000,
         }

@@ -58,7 +58,11 @@
       },
       {
         "from": "../prisma",
-        "to": "prisma"
+        "to": "prisma",
+        "filter": [
+          "**/*",
+          "!seed.ts"
+        ]
       },
       {
         "from": "../.build/prisma-cli",
@@ -66,7 +70,9 @@
         "filter": [
           "**/*",
           "**/.*",
-          "**/.*/**/*"
+          "**/.*/**/*",
+          "!**/*darwin*",
+          "!**/*linux*"
         ]
       }
     ],
@@ -92,15 +98,21 @@
         },
         {
           "from": "../prisma",
-          "to": "prisma"
+          "to": "prisma",
+          "filter": [
+            "**/*",
+            "!seed.ts"
+          ]
         },
         {
-          "from": "../.build/prisma-cli",
+          "from": "../.build/prisma-cli-staging",
           "to": "prisma-cli",
           "filter": [
             "**/*",
             "**/.*",
-            "**/.*/**/*"
+            "**/.*/**/*",
+            "!**/*windows*",
+            "!**/*win32*"
           ]
         },
         {
@@ -132,15 +144,21 @@
         },
         {
           "from": "../prisma",
-          "to": "prisma"
+          "to": "prisma",
+          "filter": [
+            "**/*",
+            "!seed.ts"
+          ]
         },
         {
-          "from": "../.build/prisma-cli",
+          "from": "../.build/prisma-cli-staging",
           "to": "prisma-cli",
           "filter": [
             "**/*",
             "**/.*",
-            "**/.*/**/*"
+            "**/.*/**/*",
+            "!**/*darwin*",
+            "!**/*linux*"
           ]
         },
         {
