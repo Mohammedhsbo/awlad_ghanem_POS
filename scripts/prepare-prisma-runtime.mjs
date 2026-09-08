@@ -28,7 +28,15 @@ function dependenciesOf(packageManifest) {
 }
 
 function copyPackage(packageName, sourceRoot, destinationRoot, dependenciesRoot) {
-  if (existsSync(path.join(destinationRoot, 'package.json'))) return;
+  const requestedVersion = manifest(sourceRoot).version;
+  const existingManifestPath = path.join(destinationRoot, 'package.json');
+
+  if (existsSync(existingManifestPath)) {
+    const existingVersion = JSON.parse(readFileSync(existingManifestPath, 'utf8')).version;
+    if (existingVersion === requestedVersion) return;
+    destinationRoot = path.join(path.dirname(destinationRoot), '..', 'node_modules', packageName);
+    if (existsSync(path.join(destinationRoot, 'package.json'))) return;
+  }
 
   mkdirSync(destinationRoot, { recursive: true });
   cpSync(sourceRoot, destinationRoot, {
