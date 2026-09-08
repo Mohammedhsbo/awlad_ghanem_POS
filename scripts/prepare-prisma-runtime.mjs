@@ -27,15 +27,18 @@ function dependenciesOf(packageManifest) {
   ])];
 }
 
-function copyPackage(packageName, sourceRoot, destinationRoot, dependenciesRoot) {
+function copyPackage(packageName, sourceRoot, preferredDestinationRoot, dependenciesRoot, ownerRoot = preferredDestinationRoot) {
   const requestedVersion = manifest(sourceRoot).version;
+  let destinationRoot = preferredDestinationRoot;
   const existingManifestPath = path.join(destinationRoot, 'package.json');
 
   if (existsSync(existingManifestPath)) {
     const existingVersion = JSON.parse(readFileSync(existingManifestPath, 'utf8')).version;
-    if (existingVersion === requestedVersion) return;
-    destinationRoot = path.join(path.dirname(destinationRoot), '..', 'node_modules', packageName);
-    if (existsSync(path.join(destinationRoot, 'package.json'))) return;
+    if (existingVersion === requestedVersion) return destinationRoot;
+    // Version conflict: nest under the SPECIFIC package that requires
+    // this version, not the shared flat root.
+    destinationRoot = path.join(ownerRoot, 'node_modules', packageName);
+    if (existsSync(path.join(destinationRoot, 'package.json'))) return destinationRoot;
   }
 
   mkdirSync(destinationRoot, { recursive: true });
@@ -54,13 +57,18 @@ function copyPackage(packageName, sourceRoot, destinationRoot, dependenciesRoot)
       if (packageManifest.optionalDependencies?.[dependencyName]) continue;
       throw new Error(`Unable to resolve Prisma runtime dependency ${dependencyName} for ${packageName}`, { cause: error });
     }
+    // Pass THIS package's own final destinationRoot as the nesting
+    // owner for its transitive deps, so a conflict nests under the
+    // actual requiring package, not a generic shared path.
     copyPackage(
       dependencyName,
       dependencyRoot,
       path.join(dependenciesRoot, dependencyName),
       dependenciesRoot,
+      destinationRoot,
     );
   }
+  return destinationRoot;
 }
 
 function findFiles(root, predicate, result = []) {
