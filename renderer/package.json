@@ -11,9 +11,9 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "oxlint",
     "preview": "vite preview",
-    "dist:win": "pnpm --filter @motorcycle-system/api build && node -e \"require('fs').rmSync('../.build/server-deploy',{recursive:true,force:true})\" && pnpm --filter @motorcycle-system/api deploy --prod --legacy ../.build/server-deploy && node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --win nsis --x64 --publish never",
-    "package:win:x64": "pnpm --filter @motorcycle-system/api build && node -e \"require('fs').rmSync('../.build/server-deploy',{recursive:true,force:true})\" && pnpm --filter @motorcycle-system/api deploy --prod --legacy ../.build/server-deploy && node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --win nsis --x64 --publish never",
-    "package:mac:x64": "pnpm --filter @motorcycle-system/api build && node -e \"require('fs').rmSync('../.build/server-deploy',{recursive:true,force:true})\" && pnpm --filter @motorcycle-system/api deploy --prod --legacy ../.build/server-deploy && node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --mac dmg --x64 --publish never"
+    "dist:win": "pnpm --filter @motorcycle-system/api build && node -e \"require('fs').rmSync('../.build/server-deploy',{recursive:true,force:true})\" && pnpm --filter @motorcycle-system/api deploy --prod --legacy ../.build/server-deploy && node ../scripts/prepare-server-deploy.mjs && node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --win nsis --x64 --publish never",
+    "package:win:x64": "pnpm --filter @motorcycle-system/api build && node -e \"require('fs').rmSync('../.build/server-deploy',{recursive:true,force:true})\" && pnpm --filter @motorcycle-system/api deploy --prod --legacy ../.build/server-deploy && node ../scripts/prepare-server-deploy.mjs && node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --win nsis --x64 --publish never",
+    "package:mac:x64": "pnpm --filter @motorcycle-system/api build && node -e \"require('fs').rmSync('../.build/server-deploy',{recursive:true,force:true})\" && pnpm --filter @motorcycle-system/api deploy --prod --legacy ../.build/server-deploy && node ../scripts/prepare-server-deploy.mjs && node ../scripts/prepare-prisma-runtime.mjs && pnpm build && electron-builder --mac dmg --x64 --publish never"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
